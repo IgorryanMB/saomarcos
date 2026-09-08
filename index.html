@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Estoque São Marcos</title>
+  <meta name="theme-color" content="#0d1117">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="styles.css" rel="stylesheet">
+</head>
+<body>
+<div id="loginScreen" class="login-screen">
+  <div class="login-card shadow-lg">
+    <img src="assets/logo-sao-marcos.jpg" class="login-logo" alt="São Marcos">
+    <h1>Estoque São Marcos</h1>
+    <p class="text-secondary">Controle rápido do estoque do posto</p>
+    <form id="loginForm" class="mt-4">
+      <div class="mb-3"><label class="form-label">Usuário</label><input id="loginUser" class="form-control form-control-lg" autocomplete="username" required></div>
+      <div class="mb-3"><label class="form-label">Senha</label><input id="loginPass" type="password" class="form-control form-control-lg" autocomplete="current-password" required></div>
+      <div id="loginError" class="alert alert-danger d-none py-2">Usuário ou senha incorretos.</div>
+      <button class="btn btn-danger btn-lg w-100" type="submit"><i class="bi bi-box-arrow-in-right me-2"></i>Entrar</button>
+    </form>
+    <div class="demo-box mt-4"><strong>Teste:</strong> admin / saomarcos2026 &nbsp; • &nbsp; consulta / consulta</div>
+  </div>
+</div>
+
+<div id="app" class="d-none">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand-wrap">
+      <img src="assets/logo-sao-marcos.jpg" alt="São Marcos" class="brand-logo">
+      <div><strong>POSTO<br>SÃO MARCOS</strong><small>Estoque inteligente</small></div>
+    </div>
+    <nav class="nav flex-column gap-1 px-3 mt-3">
+      <button class="nav-link active" data-view="dashboard"><i class="bi bi-grid-fill"></i> Dashboard</button>
+      <button class="nav-link" data-view="inventory"><i class="bi bi-box-seam"></i> Estoque</button>
+      <button class="nav-link category-link" data-category="Óleos"><i class="bi bi-droplet-fill"></i> Óleos</button>
+      <button class="nav-link category-link" data-category="Filtro de óleo"><i class="bi bi-funnel-fill"></i> Filtro de óleo</button>
+      <button class="nav-link category-link" data-category="Filtro de combustível"><i class="bi bi-fuel-pump"></i> Combustível</button>
+      <button class="nav-link category-link" data-category="Ar do motor"><i class="bi bi-wind"></i> Ar do motor</button>
+      <button class="nav-link category-link" data-category="Ar-condicionado"><i class="bi bi-snow"></i> Ar-condicionado</button>
+      <button class="nav-link category-link" data-category="Aditivos"><i class="bi bi-moisture"></i> Aditivos</button>
+      <button class="nav-link admin-only" data-view="movements"><i class="bi bi-arrow-left-right"></i> Movimentações</button>
+      <button class="nav-link admin-only" data-view="finance"><i class="bi bi-cash-coin"></i> Financeiro</button>
+      <button class="nav-link admin-only" data-view="settings"><i class="bi bi-gear-fill"></i> Configurações</button>
+    </nav>
+    <div class="sidebar-footer"><div class="shell-dot">SHELL</div><div><b>Posto Shell</b><small>Marca própria São Marcos</small></div></div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="btn icon-btn d-lg-none" id="menuBtn"><i class="bi bi-list fs-4"></i></button>
+      <div class="search-wrap"><i class="bi bi-search"></i><input id="globalSearch" placeholder="Buscar produto, código, marca..." autocomplete="off"><kbd>Ctrl K</kbd></div>
+      <div class="user-box"><span class="avatar" id="userAvatar">A</span><div><strong id="userName">Administrador</strong><small id="userRole">Administrador</small></div><button class="btn icon-btn" id="logoutBtn" title="Sair"><i class="bi bi-box-arrow-right"></i></button></div>
+    </header>
+
+    <div class="content-wrap">
+      <section id="dashboardView" class="view-section">
+        <div class="welcome-row"><div><h2 id="greeting">Olá!</h2><p>Visão geral do estoque do Posto São Marcos.</p></div><div class="today-card"><i class="bi bi-calendar3"></i><div><small id="todayDate"></small><strong id="todayTime"></strong></div></div></div>
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-xl-3"><div class="stat-card"><div class="stat-icon neutral"><i class="bi bi-box-seam-fill"></i></div><div><span>Produtos</span><strong id="statProducts">0</strong><small>Cadastrados</small></div></div></div>
+          <div class="col-6 col-xl-3"><div class="stat-card green"><div class="stat-icon"><i class="bi bi-check-circle-fill"></i></div><div><span>Normal</span><strong id="statNormal">0</strong><small>Acima do mínimo</small></div></div></div>
+          <div class="col-6 col-xl-3"><div class="stat-card yellow"><div class="stat-icon"><i class="bi bi-exclamation-circle-fill"></i></div><div><span>Estoque baixo</span><strong id="statLow">0</strong><small>Precisa atenção</small></div></div></div>
+          <div class="col-6 col-xl-3"><div class="stat-card red"><div class="stat-icon"><i class="bi bi-x-circle-fill"></i></div><div><span>Sem estoque</span><strong id="statZero">0</strong><small>Total zerado</small></div></div></div>
+        </div>
+        <div class="quick-actions admin-only mb-4">
+          <button class="quick-btn" data-action="entry"><span class="qa-icon green"><i class="bi bi-plus-lg"></i></span><span><b>Entrada</b><small>Adicionar ao estoque</small></span></button>
+          <button class="quick-btn" data-action="exit"><span class="qa-icon red"><i class="bi bi-dash-lg"></i></span><span><b>Saída</b><small>Retirada sem venda</small></span></button>
+          <button class="quick-btn" data-action="sale"><span class="qa-icon yellow"><i class="bi bi-cart-check-fill"></i></span><span><b>Venda</b><small>Registrar venda</small></span></button>
+          <button class="quick-btn" data-action="new"><span class="qa-icon"><i class="bi bi-file-earmark-plus"></i></span><span><b>Novo produto</b><small>Cadastrar item</small></span></button>
+          <button class="quick-btn" data-view="inventory"><span class="qa-icon"><i class="bi bi-search"></i></span><span><b>Consultar</b><small>Buscar no estoque</small></span></button>
+        </div>
+        <div class="row g-3">
+          <div class="col-xl-8"><div class="panel"><div class="panel-head"><h5><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Produtos que precisam de atenção</h5><button class="btn btn-sm btn-dark" data-view="inventory" data-filter="attention">Ver todos</button></div><div class="table-responsive"><table class="table inventory-table mb-0"><thead><tr><th>Produto</th><th>Categoria</th><th>Estoque</th><th>Pista</th><th>Total</th><th>Status</th></tr></thead><tbody id="attentionTable"></tbody></table></div></div></div>
+          <div class="col-xl-4">
+            <div class="panel mb-3"><div class="panel-head"><h5><i class="bi bi-pie-chart-fill me-2"></i>Estoque por categoria</h5></div><div id="categoryBars" class="category-bars"></div></div>
+            <div class="panel"><div class="panel-head"><h5><i class="bi bi-clock-history me-2"></i>Últimas movimentações</h5></div><div id="recentMovements" class="movement-list"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="inventoryView" class="view-section d-none">
+        <div class="page-title-row"><div><h2>Estoque</h2><p>Consulte produtos, quantidades e localização.</p></div><button class="btn btn-success admin-only" id="newProductBtn"><i class="bi bi-plus-lg me-1"></i>Novo produto</button></div>
+        <div class="panel filter-panel mb-3"><div class="row g-2 align-items-center"><div class="col-md-5"><div class="search-wrap local"><i class="bi bi-search"></i><input id="inventorySearch" placeholder="Código, produto, marca..."></div></div><div class="col-md-3"><select id="categoryFilter" class="form-select"><option value="">Todas as categorias</option></select></div><div class="col-md-2"><select id="statusFilter" class="form-select"><option value="">Todos</option><option value="normal">Normal</option><option value="low">Estoque baixo</option><option value="zero">Sem estoque</option></select></div><div class="col-md-2 text-md-end"><span class="result-count" id="resultCount">0 produtos</span></div></div></div>
+        <div class="panel"><div class="table-responsive"><table class="table inventory-table mb-0"><thead><tr><th>Código</th><th>Produto</th><th>Marca</th><th>Categoria</th><th>Estoque</th><th>Pista</th><th>Total</th><th>Localização</th><th>Status</th><th class="admin-only">Custo</th><th class="admin-only">Venda</th><th class="admin-only">Margem</th><th class="admin-only">Ações</th></tr></thead><tbody id="inventoryTable"></tbody></table></div></div>
+      </section>
+
+      <section id="movementsView" class="view-section d-none"><div class="page-title-row"><div><h2>Movimentações</h2><p>Histórico de entradas, saídas e vendas.</p></div><button class="btn btn-outline-light" id="exportBtn"><i class="bi bi-download me-1"></i>Exportar CSV</button></div><div class="panel"><div class="table-responsive"><table class="table inventory-table mb-0"><thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th>Quantidade</th><th>Local</th><th>Valor</th><th>Usuário</th></tr></thead><tbody id="movementTable"></tbody></table></div></div></section>
+
+      <section id="financeView" class="view-section d-none">
+        <div class="page-title-row"><div><h2>Financeiro</h2><p>Margem dos produtos e fechamento mensal das vendas registradas.</p></div><div class="d-flex gap-2 align-items-center"><label class="small text-secondary" for="financeMonth">Mês</label><input id="financeMonth" type="month" class="form-control month-input"></div></div>
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-xl"><div class="finance-card"><span>Faturamento</span><strong id="finRevenue">R$ 0,00</strong><small>Vendas do mês</small></div></div>
+          <div class="col-6 col-xl"><div class="finance-card"><span>Custo vendido</span><strong id="finCost">R$ 0,00</strong><small>Custo dos itens vendidos</small></div></div>
+          <div class="col-6 col-xl"><div class="finance-card profit"><span>Lucro bruto</span><strong id="finProfit">R$ 0,00</strong><small>Antes das despesas do posto</small></div></div>
+          <div class="col-6 col-xl"><div class="finance-card"><span>Margem</span><strong id="finMargin">0%</strong><small>Sobre o faturamento</small></div></div>
+          <div class="col-6 col-xl"><div class="finance-card"><span>Itens vendidos</span><strong id="finUnits">0</strong><small id="finSalesCount">0 vendas</small></div></div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-lg-5"><div class="panel h-100"><div class="panel-head"><h5><i class="bi bi-tags-fill me-2"></i>Cadastro de preços</h5></div><div class="p-3"><div class="finance-kpi-row"><span>Produtos sem custo</span><b id="missingCost">0</b></div><div class="finance-kpi-row"><span>Produtos sem preço de venda</span><b id="missingSale">0</b></div><div class="finance-kpi-row"><span>Valor do estoque a custo</span><b id="stockCostValue">R$ 0,00</b></div><div class="finance-kpi-row"><span>Valor potencial de venda</span><b id="stockSaleValue">R$ 0,00</b></div><button class="btn btn-outline-light w-100 mt-3" id="showMissingPrices"><i class="bi bi-pencil-square me-1"></i>Completar preços</button></div></div></div>
+          <div class="col-lg-7"><div class="panel"><div class="panel-head"><h5><i class="bi bi-trophy-fill me-2"></i>Mais vendidos no mês</h5></div><div class="table-responsive"><table class="table inventory-table mb-0"><thead><tr><th>Produto</th><th>Qtd.</th><th>Faturamento</th><th>Lucro bruto</th></tr></thead><tbody id="topSalesTable"></tbody></table></div></div></div>
+        </div>
+        <div class="panel"><div class="panel-head"><h5><i class="bi bi-receipt me-2"></i>Vendas do mês</h5><button class="btn btn-sm btn-outline-light" id="exportFinanceBtn"><i class="bi bi-download me-1"></i>Exportar fechamento</button></div><div class="table-responsive"><table class="table inventory-table mb-0"><thead><tr><th>Data</th><th>Produto</th><th>Qtd.</th><th>Preço un.</th><th>Custo un.</th><th>Faturamento</th><th>Lucro bruto</th><th>Margem</th></tr></thead><tbody id="financeSalesTable"></tbody></table></div></div>
+      </section>
+
+      <section id="settingsView" class="view-section d-none"><div class="page-title-row"><div><h2>Configurações</h2><p>Ajustes locais desta versão de teste.</p></div></div><div class="row g-3"><div class="col-lg-6"><div class="panel p-4"><h5>Versão de teste</h5><p class="text-secondary">Os dados ficam salvos neste navegador usando localStorage. Em produção, vamos trocar por banco de dados e autenticação real.</p><button id="resetDataBtn" class="btn btn-outline-danger"><i class="bi bi-arrow-counterclockwise me-1"></i>Restaurar dados do PDF</button></div></div><div class="col-lg-6"><div class="panel p-4"><h5>Perfis atuais</h5><p><span class="badge text-bg-danger">Administrador</span> pode cadastrar, editar e movimentar.</p><p><span class="badge text-bg-secondary">Consulta</span> somente visualiza o estoque.</p></div></div></div></section>
+    </div>
+  </main>
+</div>
+
+<div class="modal fade" id="productModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="productModalTitle">Produto</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><form id="productForm"><div class="modal-body"><input type="hidden" id="productId"><div class="row g-3"><div class="col-md-4"><label class="form-label">Código</label><input id="productCode" class="form-control" required></div><div class="col-md-8"><label class="form-label">Produto / descrição</label><input id="productName" class="form-control" required></div><div class="col-md-4"><label class="form-label">Marca</label><input id="productBrand" class="form-control"></div><div class="col-md-4"><label class="form-label">Categoria</label><select id="productCategory" class="form-select" required></select></div><div class="col-md-4"><label class="form-label">Tipo</label><input id="productType" class="form-control"></div><div class="col-md-3"><label class="form-label">Estoque</label><input id="productStock" type="number" min="0" class="form-control" required></div><div class="col-md-3"><label class="form-label">Pista</label><input id="productPista" type="number" min="0" class="form-control" required></div><div class="col-md-3"><label class="form-label">Estoque mínimo</label><input id="productMin" type="number" min="0" class="form-control" required></div><div class="col-md-3"><label class="form-label">Custo (R$)</label><input id="productCost" type="number" min="0" step="0.01" class="form-control" placeholder="Não informado"></div><div class="col-md-3"><label class="form-label">Venda (R$)</label><input id="productSalePrice" type="number" min="0" step="0.01" class="form-control" placeholder="Não informado"></div><div class="col-md-6"><div class="price-preview"><span>Margem estimada</span><strong id="productMarginPreview">—</strong></div></div><div class="col-12"><label class="form-label">Localização</label><input id="productLocation" class="form-control" placeholder="Ex.: Estante A"></div></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-success" type="submit">Salvar produto</button></div></form></div></div></div>
+
+<div class="modal fade" id="movementModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="movementTitle">Movimentar estoque</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><form id="movementForm"><div class="modal-body"><input type="hidden" id="movementType"><div class="mb-3"><label class="form-label">Produto</label><select id="movementProduct" class="form-select" required></select></div><div class="row g-3"><div class="col-6"><label class="form-label">Quantidade</label><input id="movementQty" type="number" min="1" value="1" class="form-control" required></div><div class="col-6"><label class="form-label">Local</label><select id="movementTarget" class="form-select"><option value="stock">Estoque</option><option value="pista">Pista</option></select></div></div><div id="saleFields" class="sale-fields d-none mt-3"><div class="row g-3"><div class="col-6"><label class="form-label">Preço de venda unitário (R$)</label><input id="movementUnitPrice" type="number" min="0" step="0.01" class="form-control"></div><div class="col-6"><label class="form-label">Custo unitário</label><div class="readonly-value" id="movementUnitCost">—</div></div></div><div class="sale-summary mt-3"><span>Resumo desta venda</span><strong id="movementSaleSummary">—</strong></div></div><div class="mt-3"><label class="form-label">Observação</label><input id="movementNote" class="form-control" placeholder="Opcional"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary" id="movementSubmit" type="submit">Confirmar</button></div></form></div></div></div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3"><div id="appToast" class="toast text-bg-dark border-secondary"><div class="d-flex"><div class="toast-body" id="toastText">Salvo.</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/seed-data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
