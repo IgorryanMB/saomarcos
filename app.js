@@ -9,6 +9,14 @@
     }
   };
   const categories=['Óleos','Filtro de óleo','Filtro de combustível','Ar do motor','Ar-condicionado','Aditivos'];
+  const productCodeRules={
+    'Óleos':{mode:'sequence',prefix:'OLEO-',pad:3},
+    'Filtro de óleo':{mode:'sequence',prefix:'SMF',pad:0},
+    'Filtro de combustível':{mode:'sequence',prefix:'FCI',pad:0},
+    'Ar do motor':{mode:'reference',prefix:'FAP'},
+    'Ar-condicionado':{mode:'reference',prefix:'AKX'},
+    'Aditivos':{mode:'sequence',prefix:'ADIT-',pad:3}
+  };
   let products=[],movements=[],session=null,currentCategory='',attentionOnly=false,missingPriceOnly=false;
   const $=id=>document.getElementById(id);
   const norm=s=>(s??'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
@@ -116,9 +124,24 @@
   }
 
   function fillCategorySelects(){
-    [$('categoryFilter'),$('productCategory')].forEach(sel=>{
-      const first=sel.id==='categoryFilter'?'<option value="">Todas as categorias</option>':'';sel.innerHTML=first+categories.map(c=>`<option>${c}</option>`).join('')
-    })
+    $('categoryFilter').innerHTML='<option value="">Todas as categorias</option>'+categories.map(c=>`<option>${c}</option>`).join('');
+    $('productCategory').innerHTML='<option value="">Selecione a categoria primeiro</option>'+categories.map(c=>`<option>${c}</option>`).join('')
+  }
+
+  function generateSequentialCode(category){
+    const rule=productCodeRules[category];if(!rule||rule.mode!=='sequence')return'';const prefix=rule.prefix.toUpperCase();const numbers=products.map(p=>(p.code||'').toUpperCase()).filter(code=>code.startsWith(prefix)).map(code=>{const match=code.slice(prefix.length).match(/^(\d+)/);return match?Number(match[1]):0}).filter(number=>number>0);const next=numbers.length?Math.max(...numbers)+1:1;return rule.prefix+(rule.pad?String(next).padStart(rule.pad,'0'):next)
+  }
+
+  function setProductFieldsEnabled(enabled){
+    ['productName','productBrand','productType','productStock','productPista','productMin','productCost','productSalePrice','productLocation'].forEach(id=>{const el=$(id);if(el)el.disabled=!enabled});const reference=$('productCodeReference');if(reference)reference.disabled=!enabled
+  }
+
+  function configureProductCode(category,existingProduct=null){
+    const rule=productCodeRules[category],area=$('productReferenceArea'),prefixField=$('productCodePrefix'),referenceField=$('productCodeReference'),codeField=$('productCode');if(!rule){codeField.value='';area.classList.add('d-none');return}if(existingProduct){codeField.value=existingProduct.code||'';if(rule.mode==='reference'){prefixField.textContent=rule.prefix;const code=existingProduct.code||'';referenceField.value=code.toUpperCase().startsWith(rule.prefix.toUpperCase())?code.slice(rule.prefix.length):code;area.classList.remove('d-none')}else area.classList.add('d-none');return}if(rule.mode==='sequence'){area.classList.add('d-none');codeField.value=generateSequentialCode(category);return}prefixField.textContent=rule.prefix;referenceField.value='';codeField.value=rule.prefix;area.classList.remove('d-none');referenceField.focus()
+  }
+
+  function updateReferenceCode(){
+    const category=$('productCategory').value,rule=productCodeRules[category];if(!rule||rule.mode!=='reference')return;let reference=$('productCodeReference').value.trim().toUpperCase(),prefix=rule.prefix.toUpperCase();if(reference.startsWith(prefix))reference=reference.slice(prefix.length);$('productCodeReference').value=reference;$('productCode').value=reference?`${rule.prefix}${reference}`:rule.prefix
   }
 
   function renderInventory(){
@@ -130,7 +153,7 @@
   }
 
   function openProduct(p=null){
-    if(!isAdmin())return;$('productModalTitle').textContent=p?'Editar produto':'Novo produto';$('productId').value=p?.id||'';$('productCode').value=p?.code||'';$('productName').value=p?.name||'';$('productBrand').value=p?.brand||'';$('productCategory').value=p?.category||'Óleos';$('productType').value=p?.type||'';$('productStock').value=p?.stock??0;$('productPista').value=p?.pista??0;$('productMin').value=p?.minStock??3;$('productCost').value=n(p?.cost)>0?p.cost:'';$('productSalePrice').value=n(p?.salePrice)>0?p.salePrice:'';$('productLocation').value=p?.location||'';updateProductMarginPreview();bootstrap.Modal.getOrCreateInstance($('productModal')).show()
+    if(!isAdmin())return;const editing=Boolean(p);$('productModalTitle').textContent=editing?'Editar produto':'Novo produto';$('productId').value=p?.id||'';$('productCategory').disabled=false;$('productCategory').value=p?.category||'';$('productCode').value=p?.code||'';$('productName').value=p?.name||'';$('productBrand').value=p?.brand||'';$('productType').value=p?.type||'';$('productStock').value=p?.stock??0;$('productPista').value=p?.pista??0;$('productMin').value=p?.minStock??3;$('productCost').value=n(p?.cost)>0?p.cost:'';$('productSalePrice').value=n(p?.salePrice)>0?p.salePrice:'';$('productLocation').value=p?.location||'';$('productCodeReference').value='';$('productCodePrefix').textContent='';if(editing){setProductFieldsEnabled(true);$('productCategory').disabled=true;configureProductCode(p.category,p)}else{setProductFieldsEnabled(false);$('productCode').value='';$('productReferenceArea').classList.add('d-none')}updateProductMarginPreview();bootstrap.Modal.getOrCreateInstance($('productModal')).show()
   }
 
   function updateSaleFields(){
@@ -227,10 +250,12 @@
       e.preventDefault();$('globalSearch').focus()
     }
   });
+  $('productCategory').addEventListener('change',()=>{if($('productId').value)return;const category=$('productCategory').value;if(!category){setProductFieldsEnabled(false);$('productCode').value='';$('productReferenceArea').classList.add('d-none');return}setProductFieldsEnabled(true);configureProductCode(category)});
+  $('productCodeReference').addEventListener('input',updateReferenceCode);
   $('productCost').addEventListener('input',updateProductMarginPreview);$('productSalePrice').addEventListener('input',updateProductMarginPreview);
   $('productForm').addEventListener('submit',e=>{
-    e.preventDefault();const oldId=$('productId').value;const obj={
-      id:oldId||('P-'+Date.now()),code:$('productCode').value.trim(),name:$('productName').value.trim(),brand:$('productBrand').value.trim(),category:$('productCategory').value,type:$('productType').value.trim(),stock:+$('productStock').value,pista:+$('productPista').value,minStock:+$('productMin').value,cost:nullableNumber($('productCost').value),salePrice:nullableNumber($('productSalePrice').value),location:$('productLocation').value.trim()
+    e.preventDefault();const oldId=$('productId').value,category=$('productCategory').value,rule=productCodeRules[category];if(!category){toast('Selecione a categoria primeiro.');return}if(rule?.mode==='reference'&&!$('productCodeReference').value.trim()){toast('Informe o código/encaixe do filtro.');$('productCodeReference').focus();return}const code=$('productCode').value.trim();if(!code){toast('Não foi possível gerar o código do produto.');return}if(!oldId&&products.some(p=>norm(p.code)===norm(code))){toast('Já existe um produto com esse código.');return}const obj={
+      id:oldId||('P-'+Date.now()),code,name:$('productName').value.trim(),brand:$('productBrand').value.trim(),category,type:$('productType').value.trim(),stock:+$('productStock').value,pista:+$('productPista').value,minStock:+$('productMin').value,cost:nullableNumber($('productCost').value),salePrice:nullableNumber($('productSalePrice').value),location:$('productLocation').value.trim()
     };if(oldId){
       const i=products.findIndex(p=>p.id===oldId);products[i]=obj
     }else products.push(obj);save();bootstrap.Modal.getInstance($('productModal')).hide();renderAll();toast('Produto salvo com sucesso.')
