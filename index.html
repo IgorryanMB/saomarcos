@@ -33,13 +33,15 @@
     </div>
     <nav class="nav flex-column gap-1 px-3 mt-3">
       <button class="nav-link active" data-view="dashboard"><i class="bi bi-grid-fill"></i> Dashboard</button>
-      <button class="nav-link" data-view="inventory"><i class="bi bi-box-seam"></i> Estoque</button>
-      <button class="nav-link category-link" data-category="Óleos"><i class="bi bi-droplet-fill"></i> Óleos</button>
-      <button class="nav-link category-link" data-category="Filtro de óleo"><i class="bi bi-funnel-fill"></i> Filtro de óleo</button>
-      <button class="nav-link category-link" data-category="Filtro de combustível"><i class="bi bi-fuel-pump"></i> Combustível</button>
-      <button class="nav-link category-link" data-category="Ar do motor"><i class="bi bi-wind"></i> Ar do motor</button>
-      <button class="nav-link category-link" data-category="Ar-condicionado"><i class="bi bi-snow"></i> Ar-condicionado</button>
-      <button class="nav-link category-link" data-category="Aditivos"><i class="bi bi-moisture"></i> Aditivos</button>
+      <button class="nav-link inventory-parent" data-view="inventory" id="inventoryNavBtn" aria-expanded="false" aria-controls="inventorySubmenu"><i class="bi bi-box-seam"></i> <span>Estoque</span><i class="bi bi-chevron-right inventory-chevron ms-auto"></i></button>
+      <div class="inventory-submenu" id="inventorySubmenu">
+        <button class="nav-link category-link" data-category="Óleos"><i class="bi bi-droplet-fill"></i> Óleos</button>
+        <button class="nav-link category-link" data-category="Filtro de óleo"><i class="bi bi-funnel-fill"></i> Filtro de óleo</button>
+        <button class="nav-link category-link" data-category="Filtro de combustível"><i class="bi bi-fuel-pump"></i> Combustível</button>
+        <button class="nav-link category-link" data-category="Ar do motor"><i class="bi bi-wind"></i> Ar do motor</button>
+        <button class="nav-link category-link" data-category="Ar-condicionado"><i class="bi bi-snow"></i> Ar-condicionado</button>
+        <button class="nav-link category-link" data-category="Aditivos"><i class="bi bi-moisture"></i> Aditivos</button>
+      </div>
       <button class="nav-link admin-only" data-view="movements"><i class="bi bi-arrow-left-right"></i> Movimentações</button>
       <button class="nav-link admin-only" data-view="finance"><i class="bi bi-cash-coin"></i> Financeiro</button>
       <button class="nav-link admin-only" data-view="settings"><i class="bi bi-gear-fill"></i> Configurações</button>
