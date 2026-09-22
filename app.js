@@ -109,7 +109,7 @@
       normal:0,low:0,zero:0
     };products.forEach(p=>stats[status(p)]++);$('statProducts').textContent=products.length;$('statNormal').textContent=stats.normal;$('statLow').textContent=stats.low;$('statZero').textContent=stats.zero;const att=products.filter(p=>status(p)!=='normal').sort((a,b)=>total(a)-total(b)).slice(0,8);$('attentionTable').innerHTML=att.map(p=>`<tr><td><b>${esc(p.name)}</b><small class="d-block text-secondary">${esc(p.code)}</small></td><td>${esc(p.category)}</td><td>${p.stock}</td><td>${p.pista}</td><td><b>${total(p)}</b></td><td>${pill(status(p))}</td></tr>`).join('')||'<tr><td colspan="6" class="text-center py-4 text-secondary">Nenhum alerta.</td></tr>';const totals=categories.map(c=>({
       c,n:products.filter(p=>p.category===c).reduce((s,p)=>s+total(p),0)
-    }));const max=Math.max(1,...totals.map(x=>x.n));$('categoryBars').innerHTML=totals.map(x=>`<div class="category-row"><span>${esc(x.c)}</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.max(2,x.n/max*100)}%"></div></div><b class="text-end">${x.n}</b></div>`).join('');renderRecent()
+    }));const max=Math.max(1,...totals.map(x=>x.n));$('categoryBars').innerHTML=totals.map(x=>`<div class="category-row"><span>${esc(x.c)}</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.max(2,x.n/max*100)}%"></div></div><b class="text-end">${Number(x.n.toFixed(2)).toLocaleString('pt-BR',{maximumFractionDigits:2})}</b></div>`).join('');renderRecent()
   }
 
   function movementTypeLabel(m){
