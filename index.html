@@ -8,6 +8,12 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" rel="stylesheet">
   <link href="styles.css" rel="stylesheet">
+  <style>
+    #inventorySubmenu[hidden]{display:none!important}
+    #inventoryNavBtn .inventory-chevron{transition:transform .2s ease}
+    #inventoryNavBtn[aria-expanded="true"] .inventory-chevron{transform:rotate(90deg)}
+    #inventorySubmenu .category-link.active{background:linear-gradient(90deg,#df3138,#bd2026);color:#fff}
+  </style>
 </head>
 <body>
 <div id="loginScreen" class="login-screen">
@@ -34,7 +40,7 @@
     <nav class="nav flex-column gap-1 px-3 mt-3">
       <button class="nav-link active" data-view="dashboard"><i class="bi bi-grid-fill"></i> Dashboard</button>
       <button class="nav-link inventory-parent" data-view="inventory" id="inventoryNavBtn" aria-expanded="false" aria-controls="inventorySubmenu"><i class="bi bi-box-seam"></i> <span>Estoque</span><i class="bi bi-chevron-right inventory-chevron ms-auto"></i></button>
-      <div class="inventory-submenu" id="inventorySubmenu">
+      <div class="inventory-submenu" id="inventorySubmenu" hidden>
         <button class="nav-link category-link" data-category="Óleos"><i class="bi bi-droplet-fill"></i> Óleos</button>
         <button class="nav-link category-link" data-category="Filtro de óleo"><i class="bi bi-funnel-fill"></i> Filtro de óleo</button>
         <button class="nav-link category-link" data-category="Filtro de combustível"><i class="bi bi-fuel-pump"></i> Combustível</button>
@@ -228,5 +234,57 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 <script src="assets/seed-data.js"></script>
 <script src="app.js"></script>
+<script>
+(() => {
+  const parent = document.getElementById('inventoryNavBtn');
+  const submenu = document.getElementById('inventorySubmenu');
+  const categoryLinks = [...document.querySelectorAll('.category-link')];
+  if (!parent || !submenu) return;
+
+  const setOpen = open => {
+    submenu.hidden = !open;
+    submenu.classList.toggle('open', open);
+    parent.classList.toggle('expanded', open);
+    parent.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+
+  const clearCategoryActive = () => {
+    categoryLinks.forEach(link => link.classList.remove('active'));
+  };
+
+  setOpen(false);
+
+  parent.addEventListener('click', () => {
+    const wasOpen = parent.getAttribute('aria-expanded') === 'true';
+    clearCategoryActive();
+    parent.classList.add('active');
+
+    const categoryFilter = document.getElementById('categoryFilter');
+    if (categoryFilter) {
+      categoryFilter.value = '';
+      categoryFilter.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    setOpen(!wasOpen);
+  });
+
+  categoryLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      clearCategoryActive();
+      link.classList.add('active');
+      parent.classList.add('active');
+      setOpen(true);
+    });
+  });
+
+  document.querySelectorAll('.sidebar .nav-link[data-view]').forEach(link => {
+    if (link === parent || link.dataset.view === 'inventory') return;
+    link.addEventListener('click', () => {
+      clearCategoryActive();
+      setOpen(false);
+    });
+  });
+})();
+</script>
 </body>
 </html>
