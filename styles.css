@@ -118,6 +118,39 @@ body {
   background:linear-gradient(90deg,#df3138,#bd2026);
   color:white
 }
+
+.inventory-submenu {
+  max-height:0;
+  opacity:0;
+  overflow:hidden;
+  visibility:hidden;
+  pointer-events:none;
+  transition:max-height .28s ease, opacity .18s ease;
+}
+.inventory-submenu.open {
+  max-height:360px;
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+}
+.sidebar .inventory-submenu .nav-link {
+  margin-left:12px;
+  width:calc(100% - 12px);
+  padding-left:18px;
+  font-size:.95rem;
+}
+.inventory-chevron {
+  transition:transform .22s ease;
+  font-size:.8rem;
+}
+.inventory-parent.expanded .inventory-chevron {
+  transform:rotate(90deg);
+}
+.sidebar .inventory-parent.active + .inventory-submenu .category-link.active {
+  background:linear-gradient(90deg,#df3138,#bd2026);
+  color:#fff;
+}
+
 .sidebar-footer {
   margin-top:auto;
   padding:20px;
