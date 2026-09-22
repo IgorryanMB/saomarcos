@@ -101,7 +101,7 @@
   }
 
   function showView(name){
-    if((name==='movements'||name==='finance'||name==='settings')&&!isAdmin())return;document.querySelectorAll('.view-section').forEach(v=>v.classList.add('d-none'));$(name+'View').classList.remove('d-none');document.querySelectorAll('.sidebar .nav-link').forEach(b=>b.classList.remove('active'));const b=document.querySelector(`[data-view="${name}"]`);if(b)b.classList.add('active');$('sidebar').classList.remove('open');if(name==='inventory')renderInventory();if(name==='movements')renderMovements();if(name==='finance')renderFinance()
+    if((name==='movements'||name==='finance'||name==='settings')&&!isAdmin())return;document.querySelectorAll('.view-section').forEach(v=>v.classList.add('d-none'));$(name+'View').classList.remove('d-none');document.querySelectorAll('.sidebar .nav-link').forEach(b=>b.classList.remove('active'));const b=document.querySelector(`.sidebar .nav-link[data-view="${name}"]`);if(b)b.classList.add('active');$('sidebar').classList.remove('open');if(name==='inventory')renderInventory();if(name==='movements')renderMovements();if(name==='finance')renderFinance()
   }
 
   function renderDashboard(){
