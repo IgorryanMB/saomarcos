@@ -104,79 +104,185 @@
 
   function setBusy(button, busy, busyText = 'Aguarde...'){
     if(!button) return;
+
     if(busy){
       button.dataset.originalHtml = button.innerHTML;
       button.disabled = true;
       button.innerHTML = `<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>${busyText}`;
     } else {
       button.disabled = false;
-      if(button.dataset.originalHtml) button.innerHTML = button.dataset.originalHtml;
+
+      if(button.dataset.originalHtml){
+        button.innerHTML = button.dataset.originalHtml;
+      }
     }
   }
 
   function setLoginMessage(message = '', type = 'danger'){
     const box = $('loginError');
+
     if(!box) return;
-    box.classList.remove('alert-danger','alert-success','alert-warning','d-none');
+
+    box.classList.remove(
+      'alert-danger',
+      'alert-success',
+      'alert-warning',
+      'd-none'
+    );
+
     box.classList.add(`alert-${type}`);
     box.textContent = message;
-    if(!message) box.classList.add('d-none');
+
+    if(!message){
+      box.classList.add('d-none');
+    }
   }
 
   function friendlyAuthError(error){
     const msg = String(error?.message || error || '');
-    if(/invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.';
-    if(/email not confirmed/i.test(msg)) return 'Confirme o e-mail antes de entrar.';
-    if(/user already registered/i.test(msg)) return 'Esse e-mail já possui cadastro. Use Entrar.';
-    if(/password/i.test(msg) && /characters|least|short/i.test(msg)) return 'A senha precisa ter pelo menos 6 caracteres.';
-    if(/database error saving new user/i.test(msg) || /not authorized|não autorizado|nao autorizado/i.test(msg)) return 'Esse e-mail não está autorizado para o sistema São Marcos.';
-    if(/rate limit/i.test(msg)) return 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.';
-    return msg || 'Não foi possível concluir a autenticação.';
+
+    if(/invalid login credentials/i.test(msg)){
+      return 'E-mail ou senha incorretos.';
+    }
+
+    if(/email not confirmed/i.test(msg)){
+      return 'Confirme o e-mail antes de entrar.';
+    }
+
+    if(/user already registered/i.test(msg)){
+      return 'Esse e-mail já possui cadastro. Use Entrar.';
+    }
+
+    if(/password/i.test(msg) && /characters|least|short/i.test(msg)){
+      return 'A senha precisa ter pelo menos 6 caracteres.';
+    }
+
+    if(
+      /database error saving new user/i.test(msg) ||
+      /not authorized|não autorizado|nao autorizado/i.test(msg)
+    ){
+      return 'Esse e-mail não está autorizado para o sistema São Marcos.';
+    }
+
+    if(/rate limit/i.test(msg)){
+      return 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.';
+    }
+
+    return 'Não foi possível concluir a autenticação. Tente novamente.';
+  }
+
+  function friendlyDataError(
+    error,
+    fallback = 'Não foi possível concluir esta operação.'
+  ){
+    const msg = String(error?.message || error || '');
+
+    if(
+      /permission denied|row-level security|row level security|rls|permiss[aã]o insuficiente|sem acesso|not authorized|unauthorized|forbidden/i.test(msg)
+    ){
+      return 'Você não tem permissão para realizar esta ação.';
+    }
+
+    if(
+      /insufficient|quantidade insuficiente|estoque insuficiente/i.test(msg)
+    ){
+      return 'Quantidade insuficiente para concluir a operação.';
+    }
+
+    if(
+      /produto n[aã]o encontrado|product not found/i.test(msg)
+    ){
+      return 'Produto não encontrado ou indisponível.';
+    }
+
+    if(
+      /duplicate|unique constraint|already exists|já existe|ja existe/i.test(msg)
+    ){
+      return 'Já existe um registro com essas informações.';
+    }
+
+    if(
+      /network|fetch|failed to fetch|timeout|connection/i.test(msg)
+    ){
+      return 'Não foi possível conectar ao servidor. Tente novamente em instantes.';
+    }
+
+    return fallback;
   }
 
   function configureUi(){
     const loginUser = $('loginUser');
+
     if(loginUser){
       const label = loginUser.closest('.mb-3')?.querySelector('label');
-      if(label) label.textContent = 'E-mail';
+
+      if(label){
+        label.textContent = 'E-mail';
+      }
+
       loginUser.type = 'email';
       loginUser.autocomplete = 'email';
       loginUser.placeholder = 'seuemail@exemplo.com';
     }
 
     const demo = document.querySelector('.demo-box');
+
     if(demo){
       demo.innerHTML = '<strong>Acesso seguro:</strong> use um e-mail autorizado no sistema.';
     }
 
     const form = $('loginForm');
+
     if(form && !$('signupBtn')){
       const loginButton = form.querySelector('button[type="submit"]');
+
       const signupButton = document.createElement('button');
+
       signupButton.type = 'button';
       signupButton.id = 'signupBtn';
       signupButton.className = 'btn btn-outline-light w-100 mt-2';
       signupButton.innerHTML = '<i class="bi bi-person-plus me-2"></i>Primeiro acesso';
-      loginButton?.insertAdjacentElement('afterend', signupButton);
-      signupButton.addEventListener('click', handleSignup);
+
+      loginButton?.insertAdjacentElement(
+        'afterend',
+        signupButton
+      );
+
+      signupButton.addEventListener(
+        'click',
+        handleSignup
+      );
     }
 
     const settingsView = $('settingsView');
+
     if(settingsView){
       const title = settingsView.querySelector('.panel h5');
       const text = settingsView.querySelector('.panel p.text-secondary');
-      if(title) title.textContent = 'Sincronização em nuvem';
-      if(text) text.textContent = 'Produtos e movimentações agora ficam salvos no Supabase e sincronizam entre computador e celular.';
+
+      if(title){
+        title.textContent = 'Sincronização em nuvem';
+      }
+
+      if(text){
+        text.textContent = 'Produtos e movimentações agora ficam salvos no Supabase e sincronizam entre computador e celular.';
+      }
     }
 
     const resetButton = $('resetDataBtn');
+
     if(resetButton){
       resetButton.className = 'btn btn-outline-light';
       resetButton.innerHTML = '<i class="bi bi-cloud-arrow-down me-1"></i>Recarregar dados do Supabase';
     }
 
-    ['productStock','productPista','productMin'].forEach(id => {
+    [
+      'productStock',
+      'productPista',
+      'productMin'
+    ].forEach(id => {
       const el = $(id);
+
       if(el){
         el.step = '0.01';
         el.min = '0';
@@ -226,156 +332,286 @@
   }
 
   async function loadData(){
-    const [productsResult, movementsResult] = await Promise.all([
+    const [
+      productsResult,
+      movementsResult
+    ] = await Promise.all([
       db.from('products')
         .select('id,legacy_id,erp_code,barcode,code,name,brand,category,type,stock,pista,min_stock,cost,sale_price,location,unit,is_active,created_at,updated_at')
         .eq('is_active', true)
         .order('name', { ascending:true }),
+
       db.from('movements')
         .select('id,product_id,product_code,product_name,movement_type,qty,target,unit_price,unit_cost,note,created_by_name,created_at')
         .order('created_at', { ascending:false })
         .limit(1000)
     ]);
 
-    if(productsResult.error) throw productsResult.error;
-    if(movementsResult.error) throw movementsResult.error;
+    if(productsResult.error){
+      throw productsResult.error;
+    }
+
+    if(movementsResult.error){
+      throw movementsResult.error;
+    }
 
     products = (productsResult.data || []).map(mapProduct);
     movements = (movementsResult.data || []).map(mapMovement);
   }
 
   async function fetchProfile(user){
-    const { data, error } = await db
-      .from('profiles')
-      .select('display_name,role')
-      .eq('id', user.id)
-      .single();
+    const { data, error } =
+      await db
+        .from('profiles')
+        .select('display_name,role')
+        .eq('id', user.id)
+        .single();
 
-    if(error) throw error;
+    if(error){
+      throw error;
+    }
+
     return data;
   }
 
   function applyRole(){
-    document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('d-none', !isAdmin()));
+    document
+      .querySelectorAll('.admin-only')
+      .forEach(el =>
+        el.classList.toggle(
+          'd-none',
+          !isAdmin()
+        )
+      );
 
-    $('userName').textContent = session?.name || 'Usuário';
-    $('userRole').textContent = isAdmin() ? 'Administrador' : isSales() ? 'Caixa / Vendas' : 'Somente consulta';
-    $('userAvatar').textContent = (session?.name || 'U')[0].toUpperCase();
+    $('userName').textContent =
+      session?.name || 'Usuário';
 
-    const dashboardNav = document.querySelector('.sidebar .nav-link[data-view="dashboard"]');
-    if(dashboardNav) dashboardNav.classList.toggle('d-none', isSales());
+    $('userRole').textContent =
+      isAdmin()
+        ? 'Administrador'
+        : isSales()
+          ? 'Caixa / Vendas'
+          : 'Somente consulta';
+
+    $('userAvatar').textContent =
+      (session?.name || 'U')[0].toUpperCase();
+
+    const dashboardNav =
+      document.querySelector(
+        '.sidebar .nav-link[data-view="dashboard"]'
+      );
+
+    if(dashboardNav){
+      dashboardNav.classList.toggle(
+        'd-none',
+        isSales()
+      );
+    }
 
     if(isSales()){
-      document.querySelectorAll('#inventoryView thead th.admin-only').forEach(th => {
-        const label = th.textContent.trim();
-        if(label === 'Venda' || label === 'Ações') th.classList.remove('d-none');
-      });
+      document
+        .querySelectorAll(
+          '#inventoryView thead th.admin-only'
+        )
+        .forEach(th => {
+          const label =
+            th.textContent.trim();
+
+          if(
+            label === 'Venda' ||
+            label === 'Ações'
+          ){
+            th.classList.remove('d-none');
+          }
+        });
     }
   }
 
   async function enterApp(user){
-    const profile = await fetchProfile(user);
+    const profile =
+      await fetchProfile(user);
 
     session = {
       id: user.id,
       email: user.email || '',
-      name: profile.display_name || user.email || 'Usuário',
-      role: profile.role || 'viewer'
+      name:
+        profile.display_name ||
+        user.email ||
+        'Usuário',
+      role:
+        profile.role ||
+        'viewer'
     };
 
     await loadData();
 
-    $('loginScreen').classList.add('d-none');
-    $('app').classList.remove('d-none');
+    $('loginScreen')
+      .classList
+      .add('d-none');
+
+    $('app')
+      .classList
+      .remove('d-none');
 
     applyRole();
     renderAll();
 
-    if(isSales()) showView('inventory');
+    if(isSales()){
+      showView('inventory');
+    }
 
     setupRealtime();
   }
 
   async function handleLogin(event){
     event.preventDefault();
+
     setLoginMessage();
 
-    const email = $('loginUser').value.trim().toLowerCase();
-    const password = $('loginPass').value;
-    const button = event.submitter || $('loginForm').querySelector('button[type="submit"]');
+    const email =
+      $('loginUser')
+        .value
+        .trim()
+        .toLowerCase();
+
+    const password =
+      $('loginPass').value;
+
+    const button =
+      event.submitter ||
+      $('loginForm')
+        .querySelector(
+          'button[type="submit"]'
+        );
 
     if(!email || !password){
-      setLoginMessage('Informe o e-mail e a senha.');
+      setLoginMessage(
+        'Informe o e-mail e a senha.'
+      );
+
       return;
     }
 
-    setBusy(button, true, 'Entrando...');
+    setBusy(
+      button,
+      true,
+      'Entrando...'
+    );
 
     try{
-      const { data, error } = await db.auth.signInWithPassword({
-        email,
-        password
-      });
+      const { data, error } =
+        await db.auth.signInWithPassword({
+          email,
+          password
+        });
 
-      if(error) throw error;
+      if(error){
+        throw error;
+      }
 
-      await enterApp(data.user);
+      await enterApp(
+        data.user
+      );
+
     } catch(error){
-      setLoginMessage(friendlyAuthError(error));
+      setLoginMessage(
+        friendlyAuthError(error)
+      );
+
     } finally {
-      setBusy(button, false);
+      setBusy(
+        button,
+        false
+      );
     }
   }
 
   async function handleSignup(){
     setLoginMessage();
 
-    const email = $('loginUser').value.trim().toLowerCase();
-    const password = $('loginPass').value;
-    const button = $('signupBtn');
+    const email =
+      $('loginUser')
+        .value
+        .trim()
+        .toLowerCase();
+
+    const password =
+      $('loginPass').value;
+
+    const button =
+      $('signupBtn');
 
     if(!email || !password){
-      setLoginMessage('Digite o e-mail e uma senha para fazer o primeiro acesso.');
+      setLoginMessage(
+        'Digite o e-mail e uma senha para fazer o primeiro acesso.'
+      );
+
       return;
     }
 
     if(password.length < 6){
-      setLoginMessage('A senha precisa ter pelo menos 6 caracteres.');
+      setLoginMessage(
+        'A senha precisa ter pelo menos 6 caracteres.'
+      );
+
       return;
     }
 
-    setBusy(button, true, 'Criando acesso...');
+    setBusy(
+      button,
+      true,
+      'Criando acesso...'
+    );
 
     try{
-      const { data, error } = await db.auth.signUp({
-        email,
-        password
-      });
+      const { data, error } =
+        await db.auth.signUp({
+          email,
+          password
+        });
 
-      if(error) throw error;
+      if(error){
+        throw error;
+      }
 
-      if(data.session && data.user){
-        await enterApp(data.user);
+      if(
+        data.session &&
+        data.user
+      ){
+        await enterApp(
+          data.user
+        );
       } else {
         setLoginMessage(
           'Cadastro criado. Confirme o e-mail recebido e depois clique em Entrar.',
           'success'
         );
       }
+
     } catch(error){
-      setLoginMessage(friendlyAuthError(error));
+      setLoginMessage(
+        friendlyAuthError(error)
+      );
+
     } finally {
-      setBusy(button, false);
+      setBusy(
+        button,
+        false
+      );
     }
   }
 
   async function logout(){
     try{
       if(realtimeChannel){
-        await db.removeChannel(realtimeChannel);
+        await db.removeChannel(
+          realtimeChannel
+        );
       }
 
       await db.auth.signOut();
+
     } finally {
       location.reload();
     }
@@ -383,31 +619,46 @@
 
   function showView(name){
     if(
-      (name === 'movements' || name === 'finance' || name === 'settings') &&
+      (
+        name === 'movements' ||
+        name === 'finance' ||
+        name === 'settings'
+      ) &&
       !isAdmin()
     ){
       return;
     }
 
-    document.querySelectorAll('.view-section').forEach(v => {
-      v.classList.add('d-none');
-    });
+    document
+      .querySelectorAll('.view-section')
+      .forEach(v =>
+        v.classList.add('d-none')
+      );
 
-    $(name + 'View').classList.remove('d-none');
+    $(name + 'View')
+      .classList
+      .remove('d-none');
 
-    document.querySelectorAll('.sidebar .nav-link').forEach(b => {
-      b.classList.remove('active');
-    });
+    document
+      .querySelectorAll(
+        '.sidebar .nav-link'
+      )
+      .forEach(b =>
+        b.classList.remove('active')
+      );
 
-    const button = document.querySelector(
-      `.sidebar .nav-link[data-view="${name}"]`
-    );
+    const button =
+      document.querySelector(
+        `.sidebar .nav-link[data-view="${name}"]`
+      );
 
     if(button){
       button.classList.add('active');
     }
 
-    $('sidebar').classList.remove('open');
+    $('sidebar')
+      .classList
+      .remove('open');
 
     if(name === 'inventory'){
       renderInventory();
@@ -433,58 +684,149 @@
       stats[status(p)]++;
     });
 
-    $('statProducts').textContent = products.length;
-    $('statNormal').textContent = stats.normal;
-    $('statLow').textContent = stats.low;
-    $('statZero').textContent = stats.zero;
+    $('statProducts').textContent =
+      products.length;
 
-    const attention = products
-      .filter(p => status(p) !== 'normal')
-      .sort((a,b) => total(a) - total(b))
-      .slice(0,8);
+    $('statNormal').textContent =
+      stats.normal;
 
-    $('attentionTable').innerHTML = attention.map(p => `
-      <tr>
-        <td>
-          <b>${esc(p.name)}</b>
-          <small class="d-block text-secondary">${esc(p.code)}</small>
-        </td>
-        <td>${esc(p.category)}</td>
-        <td>${qtyText(p.stock, p.unit === 'L' ? 'L' : '')}</td>
-        <td>${qtyText(p.pista, p.unit === 'L' ? 'L' : '')}</td>
-        <td><b>${qtyText(total(p), p.unit === 'L' ? 'L' : '')}</b></td>
-        <td>${pill(status(p))}</td>
-      </tr>
-    `).join('') ||
-    '<tr><td colspan="6" class="text-center py-4 text-secondary">Nenhum alerta.</td></tr>';
+    $('statLow').textContent =
+      stats.low;
 
-    const totals = categories.map(category => ({
-      c: category,
-      n: products
-        .filter(p => p.category === category)
-        .reduce((sum,p) => sum + total(p), 0)
-    }));
+    $('statZero').textContent =
+      stats.zero;
 
-    const max = Math.max(1, ...totals.map(x => x.n));
+    const attention =
+      products
+        .filter(
+          p =>
+            status(p) !==
+            'normal'
+        )
+        .sort(
+          (a,b) =>
+            total(a) -
+            total(b)
+        )
+        .slice(0,8);
 
-    $('categoryBars').innerHTML = totals.map(x => `
-      <div class="category-row">
-        <span>${esc(x.c)}</span>
+    $('attentionTable').innerHTML =
+      attention.map(p => `
+        <tr>
+          <td>
+            <b>${esc(p.name)}</b>
 
-        <div class="bar-bg">
-          <div
-            class="bar-fill"
-            style="width:${Math.max(2, x.n / max * 100)}%"
-          ></div>
+            <small class="d-block text-secondary">
+              ${esc(p.code)}
+            </small>
+          </td>
+
+          <td>
+            ${esc(p.category)}
+          </td>
+
+          <td>
+            ${qtyText(
+              p.stock,
+              p.unit === 'L'
+                ? 'L'
+                : ''
+            )}
+          </td>
+
+          <td>
+            ${qtyText(
+              p.pista,
+              p.unit === 'L'
+                ? 'L'
+                : ''
+            )}
+          </td>
+
+          <td>
+            <b>
+              ${qtyText(
+                total(p),
+                p.unit === 'L'
+                  ? 'L'
+                  : ''
+              )}
+            </b>
+          </td>
+
+          <td>
+            ${pill(status(p))}
+          </td>
+        </tr>
+      `).join('') ||
+      '<tr><td colspan="6" class="text-center py-4 text-secondary">Nenhum alerta.</td></tr>';
+
+    const totals =
+      categories.map(category => ({
+        c: category,
+
+        n:
+          products
+            .filter(
+              p =>
+                p.category ===
+                category
+            )
+            .reduce(
+              (sum,p) =>
+                sum +
+                total(p),
+              0
+            )
+      }));
+
+    const max =
+      Math.max(
+        1,
+        ...totals.map(
+          x => x.n
+        )
+      );
+
+    $('categoryBars').innerHTML =
+      totals.map(x => `
+        <div class="category-row">
+
+          <span>
+            ${esc(x.c)}
+          </span>
+
+          <div class="bar-bg">
+            <div
+              class="bar-fill"
+              style="width:${
+                Math.max(
+                  2,
+                  x.n / max * 100
+                )
+              }%"
+            ></div>
+          </div>
+
+          <b class="text-end">
+            ${
+              Number(
+                x.n.toFixed(2)
+              ).toLocaleString(
+                'pt-BR',
+                {
+                  maximumFractionDigits:2
+                }
+              )
+            }${
+              x.c === 'Óleos'
+                ? ' L'
+                : ''
+            }
+          </b>
+
         </div>
-
-        <b class="text-end">
-          ${Number(x.n.toFixed(2)).toLocaleString('pt-BR',{
-            maximumFractionDigits:2
-          })}${x.c === 'Óleos' ? ' L' : ''}
-        </b>
-      </div>
-    `).join('');
+      `).join('');
 
     renderRecent();
   }
@@ -502,86 +844,162 @@
   }
 
   function renderRecent(){
-    $('recentMovements').innerHTML = movements.slice(0,5).map(m => `
-      <div class="movement-item">
-        <div>
-          <b>${esc(m.productName)}</b>
+    $('recentMovements').innerHTML =
+      movements
+        .slice(0,5)
+        .map(m => `
+          <div class="movement-item">
 
-          <small>
-            ${new Date(m.date).toLocaleString('pt-BR')}
-            •
-            ${esc(m.target === 'pista' ? 'Pista' : 'Estoque')}
-            •
-            ${movementTypeLabel(m)}
-          </small>
-        </div>
+            <div>
+              <b>
+                ${esc(m.productName)}
+              </b>
 
-        <b class="movement-value ${m.type}">
-          ${m.type === 'entry' ? '+' : '-'}${qtyText(m.qty)}
-        </b>
-      </div>
-    `).join('') ||
-    '<div class="text-secondary text-center py-4">Sem movimentações ainda.</div>';
+              <small>
+                ${
+                  new Date(m.date)
+                    .toLocaleString('pt-BR')
+                }
+                •
+                ${
+                  esc(
+                    m.target === 'pista'
+                      ? 'Pista'
+                      : 'Estoque'
+                  )
+                }
+                •
+                ${
+                  movementTypeLabel(m)
+                }
+              </small>
+            </div>
+
+            <b class="movement-value ${m.type}">
+              ${
+                m.type === 'entry'
+                  ? '+'
+                  : '-'
+              }${qtyText(m.qty)}
+            </b>
+
+          </div>
+        `).join('') ||
+        '<div class="text-secondary text-center py-4">Sem movimentações ainda.</div>';
   }
 
   function fillCategorySelects(){
-    const selectedFilter = $('categoryFilter').value;
-    const selectedProductCategory = $('productCategory').value;
+    const selectedFilter =
+      $('categoryFilter').value;
+
+    const selectedProductCategory =
+      $('productCategory').value;
 
     $('categoryFilter').innerHTML =
       '<option value="">Todas as categorias</option>' +
       categories
-        .map(c => `<option>${c}</option>`)
+        .map(
+          c =>
+            `<option>${c}</option>`
+        )
         .join('');
 
     $('productCategory').innerHTML =
       '<option value="">Selecione a categoria primeiro</option>' +
       categories
-        .map(c => `<option>${c}</option>`)
+        .map(
+          c =>
+            `<option>${c}</option>`
+        )
         .join('');
 
-    if(categories.includes(selectedFilter)){
-      $('categoryFilter').value = selectedFilter;
+    if(
+      categories.includes(
+        selectedFilter
+      )
+    ){
+      $('categoryFilter').value =
+        selectedFilter;
     }
 
-    if(categories.includes(selectedProductCategory)){
-      $('productCategory').value = selectedProductCategory;
+    if(
+      categories.includes(
+        selectedProductCategory
+      )
+    ){
+      $('productCategory').value =
+        selectedProductCategory;
     }
   }
 
   function generateSequentialCode(category){
-    const rule = sequenceRules[category];
+    const rule =
+      sequenceRules[category];
 
     if(!rule){
       return '';
     }
 
-    const prefix = rule.prefix.toUpperCase();
+    const prefix =
+      rule.prefix.toUpperCase();
 
-    const numbers = products
-      .map(p => (p.code || '').toUpperCase())
-      .filter(code => code.startsWith(prefix))
-      .map(code => {
-        const match = code.slice(prefix.length).match(/^(\d+)/);
-        return match ? Number(match[1]) : 0;
-      })
-      .filter(number => number > 0);
+    const numbers =
+      products
+        .map(
+          p =>
+            (p.code || '')
+              .toUpperCase()
+        )
+        .filter(
+          code =>
+            code.startsWith(
+              prefix
+            )
+        )
+        .map(code => {
+          const match =
+            code
+              .slice(
+                prefix.length
+              )
+              .match(/^(\d+)/);
 
-    const next = numbers.length
-      ? Math.max(...numbers) + 1
-      : 1;
+          return match
+            ? Number(match[1])
+            : 0;
+        })
+        .filter(
+          number =>
+            number > 0
+        );
 
-    return rule.prefix +
+    const next =
+      numbers.length
+        ? Math.max(...numbers) + 1
+        : 1;
+
+    return (
+      rule.prefix +
       (
         rule.pad
-          ? String(next).padStart(rule.pad,'0')
+          ? String(next)
+              .padStart(
+                rule.pad,
+                '0'
+              )
           : next
-      );
+      )
+    );
   }
 
   function extractCodeParts(code){
-    const value = (code || '').trim().toUpperCase();
-    const index = value.search(/\d/);
+    const value =
+      (code || '')
+        .trim()
+        .toUpperCase();
+
+    const index =
+      value.search(/\d/);
 
     if(index < 0){
       return {
@@ -598,127 +1016,215 @@
     }
 
     return {
-      prefix:value.slice(0,index),
-      reference:value.slice(index)
+      prefix:
+        value.slice(
+          0,
+          index
+        ),
+
+      reference:
+        value.slice(index)
     };
   }
 
   function brandsForCategory(category){
-    return [...new Set(
-      products
-        .filter(p =>
-          p.category === category &&
-          String(p.brand || '').trim()
-        )
-        .map(p => String(p.brand).trim())
-    )].sort((a,b) =>
-      a.localeCompare(
-        b,
-        'pt-BR',
-        { sensitivity:'base' }
+    return [
+      ...new Set(
+        products
+          .filter(
+            p =>
+              p.category ===
+              category &&
+              String(
+                p.brand || ''
+              ).trim()
+          )
+          .map(
+            p =>
+              String(p.brand)
+                .trim()
+          )
       )
+    ].sort(
+      (a,b) =>
+        a.localeCompare(
+          b,
+          'pt-BR',
+          {
+            sensitivity:'base'
+          }
+        )
     );
   }
 
   function prefixesFor(category, brand){
-    if(!category || !brand){
+    if(
+      !category ||
+      !brand
+    ){
       return [];
     }
 
-    const wanted = norm(brand);
+    const wanted =
+      norm(brand);
 
-    const values = products
-      .filter(p =>
-        p.category === category &&
-        norm(p.brand) === wanted
-      )
-      .map(p => extractCodeParts(p.code).prefix)
-      .filter(Boolean);
+    const values =
+      products
+        .filter(
+          p =>
+            p.category ===
+            category &&
+            norm(p.brand) ===
+            wanted
+        )
+        .map(
+          p =>
+            extractCodeParts(
+              p.code
+            ).prefix
+        )
+        .filter(Boolean);
 
-    return [...new Set(values)].sort((a,b) =>
-      a.localeCompare(
-        b,
-        'pt-BR',
-        { sensitivity:'base' }
-      )
+    return [
+      ...new Set(values)
+    ].sort(
+      (a,b) =>
+        a.localeCompare(
+          b,
+          'pt-BR',
+          {
+            sensitivity:'base'
+          }
+        )
     );
   }
 
   function selectedProductBrand(){
-    const value = $('productBrand').value;
+    const value =
+      $('productBrand').value;
 
     if(value === '__other__'){
-      return $('productBrandCustom').value.trim();
+      return $('productBrandCustom')
+        .value
+        .trim();
     }
 
     return value.trim();
   }
 
   function selectedCodePrefix(){
-    const value = $('productCodeFamily').value;
+    const value =
+      $('productCodeFamily').value;
 
     if(value === '__other__'){
-      return $('productCodeFamilyCustom').value.toUpperCase();
+      return $('productCodeFamilyCustom')
+        .value
+        .toUpperCase();
     }
 
     return value;
   }
 
-  function fillBrandOptions(category, selected = ''){
-    const brands = brandsForCategory(category);
+  function fillBrandOptions(
+    category,
+    selected = ''
+  ){
+    const brands =
+      brandsForCategory(
+        category
+      );
 
     $('productBrand').innerHTML =
       '<option value="">Selecione a marca</option>' +
       brands
-        .map(brand =>
-          `<option value="${esc(brand)}">${esc(brand)}</option>`
+        .map(
+          brand =>
+            `<option value="${esc(brand)}">${esc(brand)}</option>`
         )
         .join('') +
       '<option value="__other__">Outra marca...</option>';
 
     if(selected){
-      const found = brands.find(
-        brand => norm(brand) === norm(selected)
-      );
+      const found =
+        brands.find(
+          brand =>
+            norm(brand) ===
+            norm(selected)
+        );
 
       if(found){
-        $('productBrand').value = found;
+        $('productBrand').value =
+          found;
       } else {
-        $('productBrand').value = '__other__';
-        $('productBrandCustom').value = selected;
-        $('productBrandCustomWrap').classList.remove('d-none');
+        $('productBrand').value =
+          '__other__';
+
+        $('productBrandCustom').value =
+          selected;
+
+        $('productBrandCustomWrap')
+          .classList
+          .remove('d-none');
       }
     } else {
-      $('productBrandCustom').value = '';
-      $('productBrandCustomWrap').classList.add('d-none');
+      $('productBrandCustom').value =
+        '';
+
+      $('productBrandCustomWrap')
+        .classList
+        .add('d-none');
     }
   }
 
-  function fillFamilyOptions(category, brand, selected = ''){
-    const prefixes = prefixesFor(category, brand);
+  function fillFamilyOptions(
+    category,
+    brand,
+    selected = ''
+  ){
+    const prefixes =
+      prefixesFor(
+        category,
+        brand
+      );
 
     $('productCodeFamily').innerHTML =
       '<option value="">Selecione a família/prefixo</option>' +
       prefixes
-        .map(prefix =>
-          `<option value="${esc(prefix)}">${esc(prefix.trim() || prefix)}</option>`
+        .map(
+          prefix =>
+            `<option value="${esc(prefix)}">${esc(prefix.trim() || prefix)}</option>`
         )
         .join('') +
       '<option value="__other__">Outro prefixo...</option>';
 
     if(selected){
-      const found = prefixes.find(prefix => prefix === selected);
+      const found =
+        prefixes.find(
+          prefix =>
+            prefix === selected
+        );
 
       if(found){
-        $('productCodeFamily').value = found;
+        $('productCodeFamily').value =
+          found;
       } else {
-        $('productCodeFamily').value = '__other__';
-        $('productCodeFamilyCustom').value = selected;
-        $('productCodeFamilyCustomWrap').classList.remove('d-none');
+        $('productCodeFamily').value =
+          '__other__';
+
+        $('productCodeFamilyCustom').value =
+          selected;
+
+        $('productCodeFamilyCustomWrap')
+          .classList
+          .remove('d-none');
       }
     } else {
-      $('productCodeFamilyCustom').value = '';
-      $('productCodeFamilyCustomWrap').classList.add('d-none');
+      $('productCodeFamilyCustom').value =
+        '';
+
+      $('productCodeFamilyCustomWrap')
+        .classList
+        .add('d-none');
     }
   }
 
@@ -736,7 +1242,8 @@
       const el = $(id);
 
       if(el){
-        el.disabled = !enabled;
+        el.disabled =
+          !enabled;
       }
     });
   }
@@ -745,42 +1252,75 @@
     $('productCode').value = '';
 
     $('productBrand').disabled = true;
+
     $('productBrand').innerHTML =
       '<option value="">Selecione a categoria primeiro</option>';
 
-    $('productBrandCustom').value = '';
-    $('productBrandCustomWrap').classList.add('d-none');
+    $('productBrandCustom').value =
+      '';
 
-    $('productCodeFamilyArea').classList.add('d-none');
-    $('productCodeFamily').disabled = true;
+    $('productBrandCustomWrap')
+      .classList
+      .add('d-none');
+
+    $('productCodeFamilyArea')
+      .classList
+      .add('d-none');
+
+    $('productCodeFamily').disabled =
+      true;
+
     $('productCodeFamily').innerHTML =
       '<option value="">Selecione a marca primeiro</option>';
 
-    $('productCodeFamilyCustom').value = '';
-    $('productCodeFamilyCustomWrap').classList.add('d-none');
+    $('productCodeFamilyCustom').value =
+      '';
 
-    $('productReferenceArea').classList.add('d-none');
-    $('productCodeReference').value = '';
-    $('productCodeReference').disabled = true;
+    $('productCodeFamilyCustomWrap')
+      .classList
+      .add('d-none');
 
-    $('productCodePrefix').textContent = '';
+    $('productReferenceArea')
+      .classList
+      .add('d-none');
 
-    setProductDetailFieldsEnabled(false);
+    $('productCodeReference').value =
+      '';
+
+    $('productCodeReference').disabled =
+      true;
+
+    $('productCodePrefix').textContent =
+      '';
+
+    setProductDetailFieldsEnabled(
+      false
+    );
   }
 
   function updateFinalReferenceCode(){
-    if(!referenceCategories.has($('productCategory').value)){
+    if(
+      !referenceCategories.has(
+        $('productCategory').value
+      )
+    ){
       return;
     }
 
-    const prefix = selectedCodePrefix();
+    const prefix =
+      selectedCodePrefix();
+
     const reference =
-      $('productCodeReference').value
+      $('productCodeReference')
+        .value
         .trim()
         .toUpperCase();
 
-    $('productCodeReference').value = reference;
-    $('productCodePrefix').textContent = prefix || '—';
+    $('productCodeReference').value =
+      reference;
+
+    $('productCodePrefix').textContent =
+      prefix || '—';
 
     $('productCode').value =
       prefix && reference
@@ -788,7 +1328,10 @@
         : '';
 
     setProductDetailFieldsEnabled(
-      Boolean(prefix && reference)
+      Boolean(
+        prefix &&
+        reference
+      )
     );
   }
 
@@ -797,7 +1340,8 @@
       return;
     }
 
-    const category = $('productCategory').value;
+    const category =
+      $('productCategory').value;
 
     resetProductCodeFlow();
 
@@ -806,7 +1350,9 @@
     }
 
     fillBrandOptions(category);
-    $('productBrand').disabled = false;
+
+    $('productBrand').disabled =
+      false;
   }
 
   function prepareCodeStep(){
@@ -814,37 +1360,68 @@
       return;
     }
 
-    const category = $('productCategory').value;
-    const brand = selectedProductBrand();
+    const category =
+      $('productCategory').value;
 
-    $('productCode').value = '';
-    $('productCodeFamilyArea').classList.add('d-none');
-    $('productReferenceArea').classList.add('d-none');
+    const brand =
+      selectedProductBrand();
 
-    $('productCodeFamily').disabled = true;
-    $('productCodeReference').disabled = true;
+    $('productCode').value =
+      '';
 
-    setProductDetailFieldsEnabled(false);
+    $('productCodeFamilyArea')
+      .classList
+      .add('d-none');
+
+    $('productReferenceArea')
+      .classList
+      .add('d-none');
+
+    $('productCodeFamily').disabled =
+      true;
+
+    $('productCodeReference').disabled =
+      true;
+
+    setProductDetailFieldsEnabled(
+      false
+    );
 
     if(!brand){
       return;
     }
 
-    if(referenceCategories.has(category)){
-      $('productCodeFamilyArea').classList.remove('d-none');
+    if(
+      referenceCategories.has(
+        category
+      )
+    ){
+      $('productCodeFamilyArea')
+        .classList
+        .remove('d-none');
 
-      fillFamilyOptions(category, brand);
+      fillFamilyOptions(
+        category,
+        brand
+      );
 
-      $('productCodeFamily').disabled = false;
+      $('productCodeFamily').disabled =
+        false;
 
       return;
     }
 
-    const code = generateSequentialCode(category);
+    const code =
+      generateSequentialCode(
+        category
+      );
 
-    $('productCode').value = code;
+    $('productCode').value =
+      code;
 
-    setProductDetailFieldsEnabled(Boolean(code));
+    setProductDetailFieldsEnabled(
+      Boolean(code)
+    );
   }
 
   function prepareReferenceStep(){
@@ -852,204 +1429,271 @@
       return;
     }
 
-    const prefix = selectedCodePrefix();
+    const prefix =
+      selectedCodePrefix();
 
-    $('productCode').value = '';
-    $('productCodeReference').value = '';
+    $('productCode').value =
+      '';
 
-    setProductDetailFieldsEnabled(false);
+    $('productCodeReference').value =
+      '';
 
-    $('productCodeFamilyCustomWrap').classList.toggle(
-      'd-none',
-      $('productCodeFamily').value !== '__other__'
+    setProductDetailFieldsEnabled(
+      false
     );
 
+    $('productCodeFamilyCustomWrap')
+      .classList
+      .toggle(
+        'd-none',
+        $('productCodeFamily').value !==
+        '__other__'
+      );
+
     if(!prefix){
-      $('productReferenceArea').classList.add('d-none');
+      $('productReferenceArea')
+        .classList
+        .add('d-none');
+
       return;
     }
 
-    $('productReferenceArea').classList.remove('d-none');
-    $('productCodePrefix').textContent = prefix;
-    $('productCodeReference').disabled = false;
-    $('productCodeReference').focus();
+    $('productReferenceArea')
+      .classList
+      .remove('d-none');
+
+    $('productCodePrefix').textContent =
+      prefix;
+
+    $('productCodeReference').disabled =
+      false;
+
+    $('productCodeReference')
+      .focus();
   }
 
   function renderInventory(){
-    const q = norm($('inventorySearch').value);
-    const category = $('categoryFilter').value || currentCategory;
+    const q =
+      norm(
+        $('inventorySearch').value
+      );
 
-    let stateFilter = $('statusFilter').value;
+    const category =
+      $('categoryFilter').value ||
+      currentCategory;
 
-    if(attentionOnly && !stateFilter){
+    let stateFilter =
+      $('statusFilter').value;
+
+    if(
+      attentionOnly &&
+      !stateFilter
+    ){
       stateFilter = 'low';
     }
 
-    const list = products.filter(p =>
-      (!category || p.category === category) &&
-      (
-        !stateFilter ||
+    const list =
+      products.filter(p =>
         (
-          stateFilter === 'low'
-            ? status(p) !== 'normal'
-            : status(p) === stateFilter
+          !category ||
+          p.category === category
+        ) &&
+        (
+          !stateFilter ||
+          (
+            stateFilter === 'low'
+              ? status(p) !==
+                'normal'
+              : status(p) ===
+                stateFilter
+          )
+        ) &&
+        (
+          !missingPriceOnly ||
+          nullableNumber(p.cost) === null ||
+          n(p.cost) <= 0 ||
+          nullableNumber(p.salePrice) === null ||
+          n(p.salePrice) <= 0
+        ) &&
+        (
+          !q ||
+          norm([
+            p.code,
+            p.name,
+            p.brand,
+            p.category,
+            p.type,
+            p.location,
+            p.erpCode,
+            p.barcode
+          ].join(' '))
+            .includes(q)
         )
-      ) &&
-      (
-        !missingPriceOnly ||
-        nullableNumber(p.cost) === null ||
-        n(p.cost) <= 0 ||
-        nullableNumber(p.salePrice) === null ||
-        n(p.salePrice) <= 0
-      ) &&
-      (
-        !q ||
-        norm([
-          p.code,
-          p.name,
-          p.brand,
-          p.category,
-          p.type,
-          p.location,
-          p.erpCode,
-          p.barcode
-        ].join(' ')).includes(q)
-      )
-    );
+      );
 
     $('resultCount').textContent =
-      `${list.length} produto${list.length === 1 ? '' : 's'}`;
+      `${list.length} produto${
+        list.length === 1
+          ? ''
+          : 's'
+      }`;
 
-    $('inventoryTable').innerHTML = list.map(p => `
-      <tr>
-        <td>
-          <b>${esc(p.code)}</b>
-        </td>
+    $('inventoryTable').innerHTML =
+      list.map(p => `
+        <tr>
 
-        <td>
-          ${esc(p.name)}
-        </td>
+          <td>
+            <b>
+              ${esc(p.code)}
+            </b>
+          </td>
 
-        <td>
-          ${esc(p.brand)}
-        </td>
+          <td>
+            ${esc(p.name)}
+          </td>
 
-        <td>
-          ${esc(p.category)}
-        </td>
+          <td>
+            ${esc(p.brand)}
+          </td>
 
-        <td>
-          ${qtyText(
-            p.stock,
-            p.unit === 'L' ? 'L' : ''
-          )}
-        </td>
+          <td>
+            ${esc(p.category)}
+          </td>
 
-        <td>
-          ${qtyText(
-            p.pista,
-            p.unit === 'L' ? 'L' : ''
-          )}
-        </td>
-
-        <td>
-          <b>
+          <td>
             ${qtyText(
-              total(p),
-              p.unit === 'L' ? 'L' : ''
+              p.stock,
+              p.unit === 'L'
+                ? 'L'
+                : ''
             )}
-          </b>
-        </td>
+          </td>
 
-        <td>
-          ${esc(p.location)}
-        </td>
+          <td>
+            ${qtyText(
+              p.pista,
+              p.unit === 'L'
+                ? 'L'
+                : ''
+            )}
+          </td>
 
-        <td>
-          ${pill(status(p))}
-        </td>
+          <td>
+            <b>
+              ${qtyText(
+                total(p),
+                p.unit === 'L'
+                  ? 'L'
+                  : ''
+              )}
+            </b>
+          </td>
 
-        <td class="admin-only ${isAdmin() ? '' : 'd-none'}">
-          ${
-            n(p.cost) > 0
-              ? money(p.cost)
-              : '<span class="text-warning">Não informado</span>'
-          }
-        </td>
+          <td>
+            ${esc(p.location)}
+          </td>
 
-        <td class="${canSell() ? '' : 'd-none'}">
-          ${
-            n(p.salePrice) > 0
-              ? money(p.salePrice)
-              : '<span class="text-warning">Não informado</span>'
-          }
-        </td>
+          <td>
+            ${pill(status(p))}
+          </td>
 
-        <td class="admin-only ${isAdmin() ? '' : 'd-none'}">
-          ${marginText(p)}
-        </td>
+          <td class="admin-only ${isAdmin() ? '' : 'd-none'}">
+            ${
+              n(p.cost) > 0
+                ? money(p.cost)
+                : '<span class="text-warning">Não informado</span>'
+            }
+          </td>
 
-        <td class="${canSell() ? '' : 'd-none'}">
-          <div class="action-btns">
+          <td class="${canSell() ? '' : 'd-none'}">
+            ${
+              n(p.salePrice) > 0
+                ? money(p.salePrice)
+                : '<span class="text-warning">Não informado</span>'
+            }
+          </td>
 
-            <button
-              class="btn btn-sm btn-outline-warning"
-              onclick="SM.move('${encodeURIComponent(p.id)}','sale')"
-              title="Venda"
-            >
-              <i class="bi bi-cart-check"></i>
-            </button>
+          <td class="admin-only ${isAdmin() ? '' : 'd-none'}">
+            ${marginText(p)}
+          </td>
 
-            ${isAdmin() ? `
-              <button
-                class="btn btn-sm btn-outline-success"
-                onclick="SM.move('${encodeURIComponent(p.id)}','entry')"
-                title="Entrada"
-              >
-                <i class="bi bi-plus-lg"></i>
-              </button>
-
-              <button
-                class="btn btn-sm btn-outline-danger"
-                onclick="SM.move('${encodeURIComponent(p.id)}','exit')"
-                title="Saída"
-              >
-                <i class="bi bi-dash-lg"></i>
-              </button>
+          <td class="${canSell() ? '' : 'd-none'}">
+            <div class="action-btns">
 
               <button
-                class="btn btn-sm btn-outline-secondary"
-                onclick="SM.edit('${encodeURIComponent(p.id)}')"
-                title="Editar"
+                class="btn btn-sm btn-outline-warning"
+                onclick="SM.move('${encodeURIComponent(p.id)}','sale')"
+                title="Venda"
               >
-                <i class="bi bi-pencil"></i>
+                <i class="bi bi-cart-check"></i>
               </button>
-            ` : ''}
 
-          </div>
-        </td>
-      </tr>
-    `).join('') ||
-    '<tr><td colspan="13" class="text-center py-5 text-secondary">Nenhum produto encontrado.</td></tr>';
+              ${
+                isAdmin()
+                  ? `
+                    <button
+                      class="btn btn-sm btn-outline-success"
+                      onclick="SM.move('${encodeURIComponent(p.id)}','entry')"
+                      title="Entrada"
+                    >
+                      <i class="bi bi-plus-lg"></i>
+                    </button>
+
+                    <button
+                      class="btn btn-sm btn-outline-danger"
+                      onclick="SM.move('${encodeURIComponent(p.id)}','exit')"
+                      title="Saída"
+                    >
+                      <i class="bi bi-dash-lg"></i>
+                    </button>
+
+                    <button
+                      class="btn btn-sm btn-outline-secondary"
+                      onclick="SM.edit('${encodeURIComponent(p.id)}')"
+                      title="Editar"
+                    >
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                  `
+                  : ''
+              }
+
+            </div>
+          </td>
+
+        </tr>
+      `).join('') ||
+      '<tr><td colspan="13" class="text-center py-5 text-secondary">Nenhum produto encontrado.</td></tr>';
   }
 
   function updateProductMarginPreview(){
     const cost =
-      nullableNumber($('productCost').value);
+      nullableNumber(
+        $('productCost').value
+      );
 
     const price =
-      nullableNumber($('productSalePrice').value);
+      nullableNumber(
+        $('productSalePrice').value
+      );
 
     const margin =
-      marginPct(cost, price);
+      marginPct(
+        cost,
+        price
+      );
 
     $('productMarginPreview').textContent =
       margin === null
         ? '—'
-        : `${money(price - cost)} de lucro • ${margin.toLocaleString(
-            'pt-BR',
-            { maximumFractionDigits:1 }
-          )}%`;
+        : `${money(price - cost)} de lucro • ${
+            margin.toLocaleString(
+              'pt-BR',
+              {
+                maximumFractionDigits:1
+              }
+            )
+          }%`;
   }
 
   function openProduct(p = null){
@@ -1057,23 +1701,37 @@
       return;
     }
 
-    const editing = Boolean(p);
+    const editing =
+      Boolean(p);
 
     $('productModalTitle').textContent =
       editing
         ? 'Editar produto'
         : 'Novo produto';
 
-    $('productId').value = p?.id || '';
+    $('productId').value =
+      p?.id || '';
 
-    $('productCategory').disabled = false;
-    $('productCategory').value = p?.category || '';
+    $('productCategory').disabled =
+      false;
 
-    $('productName').value = p?.name || '';
-    $('productType').value = p?.type || '';
-    $('productStock').value = p?.stock ?? 0;
-    $('productPista').value = p?.pista ?? 0;
-    $('productMin').value = p?.minStock ?? 3;
+    $('productCategory').value =
+      p?.category || '';
+
+    $('productName').value =
+      p?.name || '';
+
+    $('productType').value =
+      p?.type || '';
+
+    $('productStock').value =
+      p?.stock ?? 0;
+
+    $('productPista').value =
+      p?.pista ?? 0;
+
+    $('productMin').value =
+      p?.minStock ?? 3;
 
     $('productCost').value =
       n(p?.cost) > 0
@@ -1091,21 +1749,33 @@
     resetProductCodeFlow();
 
     if(editing){
-      $('productCategory').disabled = true;
+      $('productCategory').disabled =
+        true;
 
       fillBrandOptions(
         p.category,
         p.brand || ''
       );
 
-      $('productBrand').disabled = true;
-      $('productBrandCustom').disabled = true;
+      $('productBrand').disabled =
+        true;
+
+      $('productBrandCustom').disabled =
+        true;
 
       const parts =
-        extractCodeParts(p.code);
+        extractCodeParts(
+          p.code
+        );
 
-      if(referenceCategories.has(p.category)){
-        $('productCodeFamilyArea').classList.remove('d-none');
+      if(
+        referenceCategories.has(
+          p.category
+        )
+      ){
+        $('productCodeFamilyArea')
+          .classList
+          .remove('d-none');
 
         fillFamilyOptions(
           p.category,
@@ -1113,10 +1783,15 @@
           parts.prefix
         );
 
-        $('productCodeFamily').disabled = true;
-        $('productCodeFamilyCustom').disabled = true;
+        $('productCodeFamily').disabled =
+          true;
 
-        $('productReferenceArea').classList.remove('d-none');
+        $('productCodeFamilyCustom').disabled =
+          true;
+
+        $('productReferenceArea')
+          .classList
+          .remove('d-none');
 
         $('productCodePrefix').textContent =
           parts.prefix || '—';
@@ -1124,32 +1799,48 @@
         $('productCodeReference').value =
           parts.reference;
 
-        $('productCodeReference').disabled = true;
+        $('productCodeReference').disabled =
+          true;
       } else {
-        $('productCodeFamilyArea').classList.add('d-none');
-        $('productReferenceArea').classList.add('d-none');
+        $('productCodeFamilyArea')
+          .classList
+          .add('d-none');
+
+        $('productReferenceArea')
+          .classList
+          .add('d-none');
       }
 
       $('productCode').value =
         p.code || '';
 
-      setProductDetailFieldsEnabled(true);
+      setProductDetailFieldsEnabled(
+        true
+      );
+
     } else {
-      $('productBrandCustom').disabled = false;
-      $('productCodeFamilyCustom').disabled = false;
+      $('productBrandCustom').disabled =
+        false;
+
+      $('productCodeFamilyCustom').disabled =
+        false;
     }
 
     updateProductMarginPreview();
 
     bootstrap.Modal
-      .getOrCreateInstance($('productModal'))
+      .getOrCreateInstance(
+        $('productModal')
+      )
       .show();
   }
 
   function syncMovementQtyRules(){
     const product =
       products.find(
-        x => x.id === $('movementProduct').value
+        x =>
+          x.id ===
+          $('movementProduct').value
       );
 
     if(!product){
@@ -1160,14 +1851,24 @@
       product.unit === 'L';
 
     $('movementQty').min =
-      liters ? '0.01' : '1';
+      liters
+        ? '0.01'
+        : '1';
 
     $('movementQty').step =
-      liters ? '0.01' : '1';
+      liters
+        ? '0.01'
+        : '1';
 
-    if(n($('movementQty').value) <= 0){
+    if(
+      n(
+        $('movementQty').value
+      ) <= 0
+    ){
       $('movementQty').value =
-        liters ? '0.01' : '1';
+        liters
+          ? '0.01'
+          : '1';
     }
   }
 
@@ -1177,19 +1878,25 @@
 
     const product =
       products.find(
-        x => x.id === $('movementProduct').value
+        x =>
+          x.id ===
+          $('movementProduct').value
       );
 
     const qty =
       Math.max(
         0.01,
-        n($('movementQty').value)
+        n(
+          $('movementQty').value
+        )
       );
 
-    $('saleFields').classList.toggle(
-      'd-none',
-      type !== 'sale'
-    );
+    $('saleFields')
+      .classList
+      .toggle(
+        'd-none',
+        type !== 'sale'
+      );
 
     if(type !== 'sale'){
       return;
@@ -1201,16 +1908,22 @@
       );
 
     const cost =
-      nullableNumber(product?.cost);
+      nullableNumber(
+        product?.cost
+      );
 
     $('movementUnitCost').textContent =
       cost && cost > 0
         ? money(cost)
         : 'Não informado';
 
-    if(price === null || price <= 0){
+    if(
+      price === null ||
+      price <= 0
+    ){
       $('movementSaleSummary').textContent =
         'Informe o preço de venda';
+
       return;
     }
 
@@ -1225,14 +1938,23 @@
     }
 
     const grossCost =
-      (cost && cost > 0 ? cost : 0) * qty;
+      (
+        cost &&
+        cost > 0
+          ? cost
+          : 0
+      ) * qty;
 
     const profit =
-      revenue - grossCost;
+      revenue -
+      grossCost;
 
     const margin =
       cost && cost > 0
-        ? marginPct(cost, price)
+        ? marginPct(
+            cost,
+            price
+          )
         : null;
 
     $('movementSaleSummary').textContent =
@@ -1245,7 +1967,9 @@
                 ? ' • ' +
                   margin.toLocaleString(
                     'pt-BR',
-                    { maximumFractionDigits:1 }
+                    {
+                      maximumFractionDigits:1
+                    }
                   ) +
                   '%'
                 : ''
@@ -1254,12 +1978,18 @@
       }`;
   }
 
-  function openMovement(type, id = null){
+  function openMovement(
+    type,
+    id = null
+  ){
     if(!canSell()){
       return;
     }
 
-    if(isSales() && type !== 'sale'){
+    if(
+      isSales() &&
+      type !== 'sale'
+    ){
       toast(
         'Este acesso permite somente registrar vendas.'
       );
@@ -1267,7 +1997,8 @@
       return;
     }
 
-    $('movementType').value = type;
+    $('movementType').value =
+      type;
 
     $('movementTitle').textContent =
       type === 'entry'
@@ -1288,38 +2019,50 @@
     $('movementProduct').innerHTML =
       products
         .slice()
-        .sort((a,b) =>
-          a.name.localeCompare(b.name)
-        )
-        .map(p =>
-          `<option value="${esc(p.id)}">${
-            esc(p.code)
-          } — ${
-            esc(p.name)
-          } (${
-            qtyText(
-              total(p),
-              p.unit === 'L'
-                ? 'L'
-                : ''
+        .sort(
+          (a,b) =>
+            a.name.localeCompare(
+              b.name
             )
-          })</option>`
+        )
+        .map(
+          p =>
+            `<option value="${esc(p.id)}">${
+              esc(p.code)
+            } — ${
+              esc(p.name)
+            } (${
+              qtyText(
+                total(p),
+                p.unit === 'L'
+                  ? 'L'
+                  : ''
+              )
+            })</option>`
         )
         .join('');
 
     if(id){
-      $('movementProduct').value = id;
+      $('movementProduct').value =
+        id;
     }
 
-    $('movementQty').value = '1';
-    $('movementTarget').value = 'stock';
-    $('movementNote').value = '';
+    $('movementQty').value =
+      '1';
+
+    $('movementTarget').value =
+      'stock';
+
+    $('movementNote').value =
+      '';
 
     syncMovementQtyRules();
 
     const product =
       products.find(
-        x => x.id === $('movementProduct').value
+        x =>
+          x.id ===
+          $('movementProduct').value
       );
 
     $('movementUnitPrice').value =
@@ -1344,7 +2087,9 @@
     updateSaleFields();
 
     bootstrap.Modal
-      .getOrCreateInstance($('movementModal'))
+      .getOrCreateInstance(
+        $('movementModal')
+      )
       .show();
   }
 
@@ -1369,12 +2114,19 @@
 
         return `
           <tr>
+
             <td>
-              ${new Date(m.date).toLocaleString('pt-BR')}
+              ${
+                new Date(m.date)
+                  .toLocaleString('pt-BR')
+              }
             </td>
 
             <td>
-              <b>${esc(m.productName)}</b>
+              <b>
+                ${esc(m.productName)}
+              </b>
+
               <small class="d-block text-secondary">
                 ${esc(m.productCode)}
               </small>
@@ -1405,8 +2157,12 @@
             </td>
 
             <td>
-              ${esc(m.user || 'Usuário')}
+              ${esc(
+                m.user ||
+                'Usuário'
+              )}
             </td>
+
           </tr>
         `;
       }).join('') ||
@@ -1414,24 +2170,37 @@
   }
 
   function monthKey(date){
-    const x = new Date(date);
+    const x =
+      new Date(date);
 
-    return `${x.getFullYear()}-${String(
-      x.getMonth() + 1
-    ).padStart(2,'0')}`;
+    return `${x.getFullYear()}-${
+      String(
+        x.getMonth() + 1
+      ).padStart(
+        2,
+        '0'
+      )
+    }`;
   }
 
   function selectedMonth(){
-    return $('financeMonth').value ||
-      monthKey(new Date());
+    return (
+      $('financeMonth').value ||
+      monthKey(
+        new Date()
+      )
+    );
   }
 
   function salesForMonth(){
-    const key = selectedMonth();
+    const key =
+      selectedMonth();
 
-    return movements.filter(m =>
-      m.type === 'sale' &&
-      monthKey(m.date) === key
+    return movements.filter(
+      m =>
+        m.type === 'sale' &&
+        monthKey(m.date) ===
+        key
     );
   }
 
@@ -1451,7 +2220,8 @@
       new Map();
 
     sales.forEach(m => {
-      const qty = n(m.qty);
+      const qty =
+        n(m.qty);
 
       const r =
         n(m.unitPrice) *
@@ -1493,7 +2263,10 @@
 
     const margin =
       revenue > 0
-        ? (profit / revenue) * 100
+        ? (
+            profit /
+            revenue
+          ) * 100
         : 0;
 
     $('finRevenue').textContent =
@@ -1508,7 +2281,9 @@
     $('finMargin').textContent =
       `${margin.toLocaleString(
         'pt-BR',
-        { maximumFractionDigits:1 }
+        {
+          maximumFractionDigits:1
+        }
       )}%`;
 
     $('finUnits').textContent =
@@ -1516,17 +2291,21 @@
 
     $('finSalesCount').textContent =
       `${sales.length} venda${
-        sales.length === 1 ? '' : 's'
+        sales.length === 1
+          ? ''
+          : 's'
       }`;
 
     const missingCost =
       products.filter(
-        p => n(p.cost) <= 0
+        p =>
+          n(p.cost) <= 0
       ).length;
 
     const missingSale =
       products.filter(
-        p => n(p.salePrice) <= 0
+        p =>
+          n(p.salePrice) <= 0
       ).length;
 
     $('missingCost').textContent =
@@ -1562,7 +2341,9 @@
       );
 
     const top =
-      [...byProduct.values()]
+      [
+        ...byProduct.values()
+      ]
         .sort(
           (a,b) =>
             b.revenue -
@@ -1573,8 +2354,12 @@
     $('topSalesTable').innerHTML =
       top.map(x => `
         <tr>
+
           <td>
-            <b>${esc(x.name)}</b>
+            <b>
+              ${esc(x.name)}
+            </b>
+
             <small class="d-block text-secondary">
               ${esc(x.code)}
             </small>
@@ -1589,14 +2374,21 @@
           </td>
 
           <td>
-            ${money(x.revenue - x.cost)}
+            ${
+              money(
+                x.revenue -
+                x.cost
+              )
+            }
           </td>
+
         </tr>
       `).join('') ||
       '<tr><td colspan="4" class="text-center py-4 text-secondary">Nenhuma venda registrada neste mês.</td></tr>';
 
     $('financeSalesTable').innerHTML =
       sales.map(m => {
+
         const r =
           n(m.unitPrice) *
           n(m.qty);
@@ -1610,17 +2402,26 @@
 
         const mg =
           r > 0
-            ? (p / r) * 100
+            ? (
+                p / r
+              ) * 100
             : 0;
 
         return `
           <tr>
+
             <td>
-              ${new Date(m.date).toLocaleString('pt-BR')}
+              ${
+                new Date(m.date)
+                  .toLocaleString('pt-BR')
+              }
             </td>
 
             <td>
-              <b>${esc(m.productName)}</b>
+              <b>
+                ${esc(m.productName)}
+              </b>
+
               <small class="d-block text-secondary">
                 ${esc(m.productCode)}
               </small>
@@ -1651,11 +2452,16 @@
             </td>
 
             <td>
-              ${mg.toLocaleString(
-                'pt-BR',
-                { maximumFractionDigits:1 }
-              )}%
+              ${
+                mg.toLocaleString(
+                  'pt-BR',
+                  {
+                    maximumFractionDigits:1
+                  }
+                )
+              }%
             </td>
+
           </tr>
         `;
       }).join('') ||
@@ -1673,7 +2479,9 @@
       !$('financeMonth').value
     ){
       $('financeMonth').value =
-        monthKey(new Date());
+        monthKey(
+          new Date()
+        );
     }
 
     renderFinance();
@@ -1701,22 +2509,33 @@
       );
 
     $('greeting').textContent =
-      `Olá, ${session?.name || 'Usuário'}!`;
+      `Olá, ${
+        session?.name ||
+        'Usuário'
+      }!`;
   }
 
-  function csvDownload(rows, name){
+  function csvDownload(
+    rows,
+    name
+  ){
     const csv =
       '\ufeff' +
       rows
-        .map(row =>
-          row
-            .map(value =>
-              '"' +
-              String(value ?? '')
-                .replaceAll('"','""') +
-              '"'
-            )
-            .join(';')
+        .map(
+          row =>
+            row
+              .map(
+                value =>
+                  '"' +
+                  String(value ?? '')
+                    .replaceAll(
+                      '"',
+                      '""'
+                    ) +
+                  '"'
+              )
+              .join(';')
         )
         .join('\n');
 
@@ -1727,11 +2546,14 @@
       URL.createObjectURL(
         new Blob(
           [csv],
-          { type:'text/csv' }
+          {
+            type:'text/csv'
+          }
         )
       );
 
-    link.download = name;
+    link.download =
+      name;
 
     link.click();
 
@@ -1762,13 +2584,16 @@
       ...movements.map(m => [
         new Date(m.date)
           .toLocaleString('pt-BR'),
+
         m.productCode,
         m.productName,
         m.type,
         m.qty,
         m.target,
+
         m.unitPrice ?? '',
         m.unitCost ?? '',
+
         m.user,
         m.note || ''
       ])
@@ -1831,8 +2656,10 @@
           revenue.toFixed(2),
           cost.toFixed(2),
 
-          (revenue - cost)
-            .toFixed(2)
+          (
+            revenue -
+            cost
+          ).toFixed(2)
         ];
       })
     ];
@@ -1885,7 +2712,9 @@
     }
 
     if(
-      referenceCategories.has(category) &&
+      referenceCategories.has(
+        category
+      ) &&
       !selectedCodePrefix()
     ){
       toast(
@@ -1898,7 +2727,9 @@
     }
 
     if(
-      referenceCategories.has(category) &&
+      referenceCategories.has(
+        category
+      ) &&
       !$('productCodeReference')
         .value
         .trim()
@@ -1907,7 +2738,8 @@
         'Informe a referência/encaixe do produto.'
       );
 
-      $('productCodeReference').focus();
+      $('productCodeReference')
+        .focus();
 
       return;
     }
@@ -1943,7 +2775,8 @@
     const existing =
       oldId
         ? products.find(
-            p => p.id === oldId
+            p =>
+              p.id === oldId
           )
         : null;
 
@@ -1995,7 +2828,8 @@
           .trim(),
 
       unit:
-        existing?.unit || 'UN',
+        existing?.unit ||
+        'UN',
 
       updated_by:
         session.id
@@ -2020,9 +2854,13 @@
           await db
             .from('products')
             .update(payload)
-            .eq('id', oldId)
+            .eq(
+              'id',
+              oldId
+            )
             .select('id')
             .single();
+
       } else {
         result =
           await db
@@ -2049,13 +2887,20 @@
       toast(
         'Produto salvo com sucesso.'
       );
+
     } catch(error){
-      console.error(error);
+      console.error(
+        'Erro técnico ao salvar produto:',
+        error
+      );
 
       toast(
-        error?.message ||
-        'Não foi possível salvar o produto.'
+        friendlyDataError(
+          error,
+          'Não foi possível salvar o produto.'
+        )
       );
+
     } finally {
       setBusy(
         submitButton,
@@ -2102,7 +2947,8 @@
 
     const product =
       products.find(
-        p => p.id === id
+        p =>
+          p.id === id
       );
 
     if(
@@ -2113,7 +2959,9 @@
     }
 
     const available =
-      n(product[target]);
+      n(
+        product[target]
+      );
 
     if(
       type !== 'entry' &&
@@ -2169,11 +3017,21 @@
         await db.rpc(
           'register_movement',
           {
-            p_product_id: id,
-            p_movement_type: type,
-            p_qty: qty,
-            p_target: target,
-            p_unit_price: unitPrice,
+            p_product_id:
+              id,
+
+            p_movement_type:
+              type,
+
+            p_qty:
+              qty,
+
+            p_target:
+              target,
+
+            p_unit_price:
+              unitPrice,
+
             p_note:
               $('movementNote')
                 .value
@@ -2204,11 +3062,16 @@
       );
 
     } catch(error){
-      console.error(error);
+      console.error(
+        'Erro técnico ao registrar movimentação:',
+        error
+      );
 
       toast(
-        error?.message ||
-        'Não foi possível registrar a movimentação.'
+        friendlyDataError(
+          error,
+          'Não foi possível registrar a movimentação.'
+        )
       );
 
     } finally {
@@ -2230,6 +3093,7 @@
           try{
             await loadData();
             renderAll();
+
           } catch(error){
             console.error(
               'Erro ao atualizar dados em tempo real:',
@@ -2250,7 +3114,9 @@
 
     realtimeChannel =
       db
-        .channel('sao-marcos-live')
+        .channel(
+          'sao-marcos-live'
+        )
 
         .on(
           'postgres_changes',
@@ -2292,7 +3158,9 @@
           .toggle('open');
 
     document
-      .querySelectorAll('[data-view]')
+      .querySelectorAll(
+        '[data-view]'
+      )
       .forEach(button =>
         button.addEventListener(
           'click',
@@ -2302,12 +3170,20 @@
               button.dataset.filter ===
               'attention'
             ){
-              attentionOnly = true;
-              missingPriceOnly = false;
-              currentCategory = '';
+              attentionOnly =
+                true;
 
-              $('categoryFilter').value = '';
-              $('statusFilter').value = '';
+              missingPriceOnly =
+                false;
+
+              currentCategory =
+                '';
+
+              $('categoryFilter').value =
+                '';
+
+              $('statusFilter').value =
+                '';
             }
 
             showView(
@@ -2318,19 +3194,26 @@
       );
 
     document
-      .querySelectorAll('.category-link')
+      .querySelectorAll(
+        '.category-link'
+      )
       .forEach(button =>
         button.addEventListener(
           'click',
           () => {
 
-            attentionOnly = false;
-            missingPriceOnly = false;
+            attentionOnly =
+              false;
+
+            missingPriceOnly =
+              false;
 
             currentCategory =
               button.dataset.category;
 
-            showView('inventory');
+            showView(
+              'inventory'
+            );
 
             $('categoryFilter').value =
               currentCategory;
@@ -2341,7 +3224,9 @@
       );
 
     document
-      .querySelectorAll('[data-action]')
+      .querySelectorAll(
+        '[data-action]'
+      )
       .forEach(button =>
         button.addEventListener(
           'click',
@@ -2363,14 +3248,19 @@
       );
 
     $('newProductBtn').onclick =
-      () => openProduct();
+      () =>
+        openProduct();
 
     $('inventorySearch')
       .addEventListener(
         'input',
         () => {
-          attentionOnly = false;
-          missingPriceOnly = false;
+
+          attentionOnly =
+            false;
+
+          missingPriceOnly =
+            false;
 
           renderInventory();
         }
@@ -2380,9 +3270,15 @@
       .addEventListener(
         'change',
         () => {
-          currentCategory = '';
-          attentionOnly = false;
-          missingPriceOnly = false;
+
+          currentCategory =
+            '';
+
+          attentionOnly =
+            false;
+
+          missingPriceOnly =
+            false;
 
           renderInventory();
         }
@@ -2392,8 +3288,12 @@
       .addEventListener(
         'change',
         () => {
-          attentionOnly = false;
-          missingPriceOnly = false;
+
+          attentionOnly =
+            false;
+
+          missingPriceOnly =
+            false;
 
           renderInventory();
         }
@@ -2404,8 +3304,12 @@
         'input',
         event => {
 
-          if(event.target.value){
-            showView('inventory');
+          if(
+            event.target.value
+          ){
+            showView(
+              'inventory'
+            );
 
             $('inventorySearch').value =
               event.target.value;
@@ -2422,11 +3326,14 @@
 
         if(
           event.ctrlKey &&
-          event.key.toLowerCase() === 'k'
+          event.key
+            .toLowerCase() ===
+            'k'
         ){
           event.preventDefault();
 
-          $('globalSearch').focus();
+          $('globalSearch')
+            .focus();
         }
 
       }
@@ -2443,7 +3350,9 @@
         'change',
         () => {
 
-          if($('productId').value){
+          if(
+            $('productId').value
+          ){
             return;
           }
 
@@ -2462,7 +3371,8 @@
             $('productBrandCustom').value =
               '';
 
-            $('productBrandCustom').focus();
+            $('productBrandCustom')
+              .focus();
           }
 
           prepareCodeStep();
@@ -2480,7 +3390,9 @@
         'change',
         () => {
 
-          if($('productId').value){
+          if(
+            $('productId').value
+          ){
             return;
           }
 
@@ -2508,7 +3420,9 @@
         'input',
         () => {
 
-          if($('productId').value){
+          if(
+            $('productId').value
+          ){
             return;
           }
 
@@ -2531,6 +3445,7 @@
 
             $('productCodeReference').disabled =
               false;
+
           } else {
             $('productReferenceArea')
               .classList
@@ -2594,7 +3509,9 @@
             'sale'
           ){
             $('movementUnitPrice').value =
-              n(product?.salePrice) > 0
+              n(
+                product?.salePrice
+              ) > 0
                 ? product.salePrice
                 : '';
           }
@@ -2639,15 +3556,27 @@
     $('showMissingPrices').onclick =
       () => {
 
-        missingPriceOnly = true;
-        attentionOnly = false;
-        currentCategory = '';
+        missingPriceOnly =
+          true;
 
-        showView('inventory');
+        attentionOnly =
+          false;
 
-        $('categoryFilter').value = '';
-        $('statusFilter').value = '';
-        $('inventorySearch').value = '';
+        currentCategory =
+          '';
+
+        showView(
+          'inventory'
+        );
+
+        $('categoryFilter').value =
+          '';
+
+        $('statusFilter').value =
+          '';
+
+        $('inventorySearch').value =
+          '';
 
         renderInventory();
 
@@ -2694,20 +3623,26 @@
   }
 
   window.SM = {
-    edit: id =>
-      openProduct(
-        products.find(
-          p =>
-            p.id ===
-            decodeURIComponent(id)
-        )
-      ),
+    edit:
+      id =>
+        openProduct(
+          products.find(
+            p =>
+              p.id ===
+              decodeURIComponent(
+                id
+              )
+          )
+        ),
 
-    move: (id,type) =>
-      openMovement(
-        type,
-        decodeURIComponent(id)
-      )
+    move:
+      (id,type) =>
+        openMovement(
+          type,
+          decodeURIComponent(
+            id
+          )
+        )
   };
 
   async function boot(){
@@ -2726,9 +3661,14 @@
           SUPABASE_PUBLISHABLE_KEY,
           {
             auth: {
-              persistSession: true,
-              autoRefreshToken: true,
-              detectSessionInUrl: true
+              persistSession:
+                true,
+
+              autoRefreshToken:
+                true,
+
+              detectSessionInUrl:
+                true
             }
           }
         );
@@ -2737,7 +3677,8 @@
         event => {
 
           if(
-            event === 'SIGNED_OUT' &&
+            event ===
+            'SIGNED_OUT' &&
             session
           ){
             location.reload();
@@ -2753,7 +3694,9 @@
         throw error;
       }
 
-      if(data.session?.user){
+      if(
+        data.session?.user
+      ){
         try{
           await enterApp(
             data.session.user
