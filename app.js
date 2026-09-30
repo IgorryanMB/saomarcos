@@ -4,8 +4,22 @@
   const SUPABASE_URL = 'https://voxyialbhxsaqewcwtyo.supabase.co';
   const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_XsLS0csjBTFR3YNgg0mNgA_QKUop5oq';
 
-  const categories = ['Óleos','Filtro de óleo','Filtro de combustível','Ar do motor','Ar-condicionado','Aditivos'];
-  const referenceCategories = new Set(['Filtro de óleo','Filtro de combustível','Ar do motor','Ar-condicionado']);
+  const categories = [
+    'Óleos',
+    'Filtro de óleo',
+    'Filtro de combustível',
+    'Ar do motor',
+    'Ar-condicionado',
+    'Aditivos'
+  ];
+
+  const referenceCategories = new Set([
+    'Filtro de óleo',
+    'Filtro de combustível',
+    'Ar do motor',
+    'Ar-condicionado'
+  ]);
+
   const sequenceRules = {
     'Óleos': { prefix:'OLEO-', pad:3 },
     'Aditivos': { prefix:'ADIT-', pad:3 }
@@ -22,7 +36,15 @@
   let realtimeReloadTimer = null;
 
   const $ = id => document.getElementById(id);
-  const norm = s => (s ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+
+  const norm = s =>
+    (s ?? '')
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g,' ')
+      .trim();
 
   function n(v){
     const x = Number(v);
@@ -30,15 +52,30 @@
   }
 
   function nullableNumber(v){
-    if(v === null || v === undefined || v === '') return null;
+    if(v === null || v === undefined || v === ''){
+      return null;
+    }
+
     const x = Number(v);
-    return Number.isFinite(x) ? x : null;
+
+    return Number.isFinite(x)
+      ? x
+      : null;
   }
 
   function esc(s){
-    return (s ?? '').toString().replace(/[&<>'"]/g, c => ({
-      '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'
-    }[c]));
+    return (s ?? '')
+      .toString()
+      .replace(
+        /[&<>'"]/g,
+        c => ({
+          '&':'&amp;',
+          '<':'&lt;',
+          '>':'&gt;',
+          "'":'&#39;',
+          '"':'&quot;'
+        }[c])
+      );
   }
 
   function total(p){
@@ -47,51 +84,133 @@
 
   function status(p){
     const t = total(p);
-    if(t <= 0) return 'zero';
-    if(t <= n(p.minStock)) return 'low';
+
+    if(t <= 0){
+      return 'zero';
+    }
+
+    if(t <= n(p.minStock)){
+      return 'low';
+    }
+
     return 'normal';
   }
 
   function statusLabel(s){
-    return s === 'zero' ? 'Sem estoque' : s === 'low' ? 'Estoque baixo' : 'Normal';
+    return s === 'zero'
+      ? 'Sem estoque'
+      : s === 'low'
+        ? 'Estoque baixo'
+        : 'Normal';
   }
 
   function pill(s){
-    return `<span class="status-pill status-${s}">${statusLabel(s)}</span>`;
+    return `
+      <span class="status-pill status-${s}">
+        ${statusLabel(s)}
+      </span>
+    `;
   }
 
   function money(v){
-    if(v === null || v === undefined || v === '' || !Number.isFinite(Number(v))) return '—';
-    return Number(v).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+    if(
+      v === null ||
+      v === undefined ||
+      v === '' ||
+      !Number.isFinite(Number(v))
+    ){
+      return '—';
+    }
+
+    return Number(v).toLocaleString(
+      'pt-BR',
+      {
+        style:'currency',
+        currency:'BRL'
+      }
+    );
   }
 
   function qtyText(v, unit = ''){
     const number = Number(v);
-    if(!Number.isFinite(number)) return '0';
-    const text = number.toLocaleString('pt-BR', { maximumFractionDigits:3 });
-    return unit ? `${text} ${unit}` : text;
+
+    if(!Number.isFinite(number)){
+      return '0';
+    }
+
+    const text = number.toLocaleString(
+      'pt-BR',
+      {
+        maximumFractionDigits:3
+      }
+    );
+
+    return unit
+      ? `${text} ${unit}`
+      : text;
   }
 
   function marginPct(cost, price){
     cost = nullableNumber(cost);
     price = nullableNumber(price);
-    if(cost === null || price === null || price <= 0) return null;
-    return ((price - cost) / price) * 100;
+
+    if(
+      cost === null ||
+      price === null ||
+      price <= 0
+    ){
+      return null;
+    }
+
+    return (
+      (price - cost) /
+      price
+    ) * 100;
   }
 
   function marginText(p){
-    const m = marginPct(p.cost, p.salePrice);
-    return m === null ? '—' : `${m.toLocaleString('pt-BR',{ maximumFractionDigits:1 })}%`;
+    const m = marginPct(
+      p.cost,
+      p.salePrice
+    );
+
+    return m === null
+      ? '—'
+      : `${m.toLocaleString(
+          'pt-BR',
+          {
+            maximumFractionDigits:1
+          }
+        )}%`;
   }
 
   function toast(msg){
-    if(!$('toastText') || !$('appToast')) return;
+    if(
+      !$('toastText') ||
+      !$('appToast')
+    ){
+      return;
+    }
+
     $('toastText').textContent = msg;
-    bootstrap.Toast.getOrCreateInstance($('appToast')).show();
+
+    bootstrap.Toast
+      .getOrCreateInstance(
+        $('appToast')
+      )
+      .show();
   }
 
   function isAdmin(){
     return session?.role === 'admin';
+  }
+
+  function isOwner(){
+    return (
+      session?.email
+        ?.toLowerCase() ===
+      'igorrian888@gmail.com'
+    );
   }
 
   function isSales(){
@@ -99,29 +218,53 @@
   }
 
   function canSell(){
-    return isAdmin() || isSales();
+    return (
+      isAdmin() ||
+      isSales()
+    );
   }
 
-  function setBusy(button, busy, busyText = 'Aguarde...'){
-    if(!button) return;
+  function setBusy(
+    button,
+    busy,
+    busyText = 'Aguarde...'
+  ){
+    if(!button){
+      return;
+    }
 
     if(busy){
-      button.dataset.originalHtml = button.innerHTML;
+      button.dataset.originalHtml =
+        button.innerHTML;
+
       button.disabled = true;
-      button.innerHTML = `<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>${busyText}`;
+
+      button.innerHTML = `
+        <span
+          class="spinner-border spinner-border-sm me-2"
+          aria-hidden="true"
+        ></span>
+        ${busyText}
+      `;
     } else {
       button.disabled = false;
 
       if(button.dataset.originalHtml){
-        button.innerHTML = button.dataset.originalHtml;
+        button.innerHTML =
+          button.dataset.originalHtml;
       }
     }
   }
 
-  function setLoginMessage(message = '', type = 'danger'){
+  function setLoginMessage(
+    message = '',
+    type = 'danger'
+  ){
     const box = $('loginError');
 
-    if(!box) return;
+    if(!box){
+      return;
+    }
 
     box.classList.remove(
       'alert-danger',
@@ -130,30 +273,53 @@
       'd-none'
     );
 
-    box.classList.add(`alert-${type}`);
-    box.textContent = message;
+    box.classList.add(
+      `alert-${type}`
+    );
+
+    box.textContent =
+      message;
 
     if(!message){
-      box.classList.add('d-none');
+      box.classList.add(
+        'd-none'
+      );
     }
   }
 
   function friendlyAuthError(error){
-    const msg = String(error?.message || error || '');
+    const msg =
+      String(
+        error?.message ||
+        error ||
+        ''
+      );
 
-    if(/invalid login credentials/i.test(msg)){
+    if(
+      /invalid login credentials/i
+        .test(msg)
+    ){
       return 'E-mail ou senha incorretos.';
     }
 
-    if(/email not confirmed/i.test(msg)){
+    if(
+      /email not confirmed/i
+        .test(msg)
+    ){
       return 'Confirme o e-mail antes de entrar.';
     }
 
-    if(/user already registered/i.test(msg)){
+    if(
+      /user already registered/i
+        .test(msg)
+    ){
       return 'Esse e-mail já possui cadastro. Use Entrar.';
     }
 
-    if(/password/i.test(msg) && /characters|least|short/i.test(msg)){
+    if(
+      /password/i.test(msg) &&
+      /characters|least|short/i.test(msg)
+    ){
       return 'A senha precisa ter pelo menos 6 caracteres.';
     }
 
@@ -164,7 +330,9 @@
       return 'Esse e-mail não está autorizado para o sistema São Marcos.';
     }
 
-    if(/rate limit/i.test(msg)){
+    if(
+      /rate limit/i.test(msg)
+    ){
       return 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente novamente.';
     }
 
@@ -173,36 +341,47 @@
 
   function friendlyDataError(
     error,
-    fallback = 'Não foi possível concluir esta operação.'
+    fallback =
+      'Não foi possível concluir esta operação.'
   ){
-    const msg = String(error?.message || error || '');
+    const msg =
+      String(
+        error?.message ||
+        error ||
+        ''
+      );
 
     if(
-      /permission denied|row-level security|row level security|rls|permiss[aã]o insuficiente|sem acesso|not authorized|unauthorized|forbidden/i.test(msg)
+      /permission denied|row-level security|row level security|rls|permiss[aã]o insuficiente|sem acesso|not authorized|unauthorized|forbidden/i
+        .test(msg)
     ){
       return 'Você não tem permissão para realizar esta ação.';
     }
 
     if(
-      /insufficient|quantidade insuficiente|estoque insuficiente/i.test(msg)
+      /insufficient|quantidade insuficiente|estoque insuficiente/i
+        .test(msg)
     ){
       return 'Quantidade insuficiente para concluir a operação.';
     }
 
     if(
-      /produto n[aã]o encontrado|product not found/i.test(msg)
+      /produto n[aã]o encontrado|product not found/i
+        .test(msg)
     ){
       return 'Produto não encontrado ou indisponível.';
     }
 
     if(
-      /duplicate|unique constraint|already exists|já existe|ja existe/i.test(msg)
+      /duplicate|unique constraint|already exists|já existe|ja existe/i
+        .test(msg)
     ){
       return 'Já existe um registro com essas informações.';
     }
 
     if(
-      /network|fetch|failed to fetch|timeout|connection/i.test(msg)
+      /network|fetch|failed to fetch|timeout|connection/i
+        .test(msg)
     ){
       return 'Não foi possível conectar ao servidor. Tente novamente em instantes.';
     }
@@ -211,69 +390,126 @@
   }
 
   function configureUi(){
-    const loginUser = $('loginUser');
+    const loginUser =
+      $('loginUser');
 
     if(loginUser){
-      const label = loginUser.closest('.mb-3')?.querySelector('label');
+      const label =
+        loginUser
+          .closest('.mb-3')
+          ?.querySelector('label');
 
       if(label){
-        label.textContent = 'E-mail';
+        label.textContent =
+          'E-mail';
       }
 
-      loginUser.type = 'email';
-      loginUser.autocomplete = 'email';
-      loginUser.placeholder = 'seuemail@exemplo.com';
+      loginUser.type =
+        'email';
+
+      loginUser.autocomplete =
+        'email';
+
+      loginUser.placeholder =
+        'seuemail@exemplo.com';
     }
 
-    const demo = document.querySelector('.demo-box');
+    const demo =
+      document.querySelector(
+        '.demo-box'
+      );
 
     if(demo){
-      demo.innerHTML = '<strong>Acesso seguro:</strong> use um e-mail autorizado no sistema.';
+      demo.innerHTML =
+        '<strong>Acesso seguro:</strong> use um e-mail autorizado no sistema.';
     }
 
-    const form = $('loginForm');
+    const form =
+      $('loginForm');
 
-    if(form && !$('signupBtn')){
-      const loginButton = form.querySelector('button[type="submit"]');
+    if(
+      form &&
+      !$('signupBtn')
+    ){
+      const loginButton =
+        form.querySelector(
+          'button[type="submit"]'
+        );
 
-      const signupButton = document.createElement('button');
+      const signupButton =
+        document.createElement(
+          'button'
+        );
 
-      signupButton.type = 'button';
-      signupButton.id = 'signupBtn';
-      signupButton.className = 'btn btn-outline-light w-100 mt-2';
-      signupButton.innerHTML = '<i class="bi bi-person-plus me-2"></i>Primeiro acesso';
+      signupButton.type =
+        'button';
 
-      loginButton?.insertAdjacentElement(
-        'afterend',
-        signupButton
-      );
+      signupButton.id =
+        'signupBtn';
 
-      signupButton.addEventListener(
-        'click',
-        handleSignup
-      );
+      signupButton.className =
+        'btn btn-outline-light w-100 mt-2';
+
+      signupButton.innerHTML =
+        '<i class="bi bi-person-plus me-2"></i>Primeiro acesso';
+
+      loginButton
+        ?.insertAdjacentElement(
+          'afterend',
+          signupButton
+        );
+
+      signupButton
+        .addEventListener(
+          'click',
+          handleSignup
+        );
     }
 
-    const settingsView = $('settingsView');
+    const settingsView =
+      $('settingsView');
 
     if(settingsView){
-      const title = settingsView.querySelector('.panel h5');
-      const text = settingsView.querySelector('.panel p.text-secondary');
+      const title =
+        settingsView
+          .querySelector(
+            '.panel h5'
+          );
+
+      const text =
+        settingsView
+          .querySelector(
+            '.panel p.text-secondary'
+          );
 
       if(title){
-        title.textContent = 'Sincronização em nuvem';
+        title.textContent =
+          'Sincronização em nuvem';
       }
 
       if(text){
-        text.textContent = 'Produtos e movimentações agora ficam salvos no Supabase e sincronizam entre computador e celular.';
+        text.textContent =
+          'Produtos e movimentações ficam salvos no servidor e sincronizam entre os dispositivos autorizados.';
       }
     }
 
-    const resetButton = $('resetDataBtn');
+    const resetButton =
+      $('resetDataBtn');
 
     if(resetButton){
-      resetButton.className = 'btn btn-outline-light';
-      resetButton.innerHTML = '<i class="bi bi-cloud-arrow-down me-1"></i>Recarregar dados do Supabase';
+      resetButton.className =
+        'btn btn-outline-light';
+
+      resetButton.innerHTML =
+        '<i class="bi bi-cloud-arrow-down me-1"></i>Recarregar dados do Supabase';
+    }
+
+    const exportFinanceButton =
+      $('exportFinanceBtn');
+
+    if(exportFinanceButton){
+      exportFinanceButton.innerHTML =
+        '<i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel';
     }
 
     [
@@ -293,41 +529,93 @@
   function mapProduct(row){
     return {
       id: row.id,
-      legacyId: row.legacy_id || '',
-      erpCode: row.erp_code || '',
-      barcode: row.barcode || '',
-      code: row.code || '',
-      name: row.name || '',
-      brand: row.brand || '',
-      category: row.category || '',
-      type: row.type || '',
-      stock: n(row.stock),
-      pista: n(row.pista),
-      minStock: n(row.min_stock),
-      cost: nullableNumber(row.cost),
-      salePrice: nullableNumber(row.sale_price),
-      location: row.location || '',
-      unit: row.unit || 'UN',
-      isActive: row.is_active !== false,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at
+      legacyId:
+        row.legacy_id || '',
+      erpCode:
+        row.erp_code || '',
+      barcode:
+        row.barcode || '',
+      code:
+        row.code || '',
+      name:
+        row.name || '',
+      brand:
+        row.brand || '',
+      category:
+        row.category || '',
+      type:
+        row.type || '',
+      stock:
+        n(row.stock),
+      pista:
+        n(row.pista),
+      minStock:
+        n(row.min_stock),
+      cost:
+        nullableNumber(
+          row.cost
+        ),
+      salePrice:
+        nullableNumber(
+          row.sale_price
+        ),
+      location:
+        row.location || '',
+      unit:
+        row.unit || 'UN',
+      isActive:
+        row.is_active !== false,
+      createdAt:
+        row.created_at,
+      updatedAt:
+        row.updated_at
     };
   }
 
   function mapMovement(row){
     return {
-      id: row.id,
-      productId: row.product_id,
-      productCode: row.product_code || '',
-      productName: row.product_name || '',
-      type: row.movement_type || 'exit',
-      qty: n(row.qty),
-      target: row.target || 'stock',
-      unitPrice: nullableNumber(row.unit_price),
-      unitCost: nullableNumber(row.unit_cost),
-      note: row.note || '',
-      user: row.created_by_name || '',
-      date: row.created_at
+      id:
+        row.id,
+
+      productId:
+        row.product_id,
+
+      productCode:
+        row.product_code || '',
+
+      productName:
+        row.product_name || '',
+
+      type:
+        row.movement_type ||
+        'exit',
+
+      qty:
+        n(row.qty),
+
+      target:
+        row.target ||
+        'stock',
+
+      unitPrice:
+        nullableNumber(
+          row.unit_price
+        ),
+
+      unitCost:
+        nullableNumber(
+          row.unit_cost
+        ),
+
+      note:
+        row.note || '',
+
+      user:
+        row.created_by_name ||
+        '',
+
+      date:
+        row.created_at
     };
   }
 
@@ -336,14 +624,33 @@
       productsResult,
       movementsResult
     ] = await Promise.all([
-      db.from('products')
-        .select('id,legacy_id,erp_code,barcode,code,name,brand,category,type,stock,pista,min_stock,cost,sale_price,location,unit,is_active,created_at,updated_at')
-        .eq('is_active', true)
-        .order('name', { ascending:true }),
+      db
+        .from('products')
+        .select(
+          'id,legacy_id,erp_code,barcode,code,name,brand,category,type,stock,pista,min_stock,cost,sale_price,location,unit,is_active,created_at,updated_at'
+        )
+        .eq(
+          'is_active',
+          true
+        )
+        .order(
+          'name',
+          {
+            ascending:true
+          }
+        ),
 
-      db.from('movements')
-        .select('id,product_id,product_code,product_name,movement_type,qty,target,unit_price,unit_cost,note,created_by_name,created_at')
-        .order('created_at', { ascending:false })
+      db
+        .from('movements')
+        .select(
+          'id,product_id,product_code,product_name,movement_type,qty,target,unit_price,unit_cost,note,created_by_name,created_at'
+        )
+        .order(
+          'created_at',
+          {
+            ascending:false
+          }
+        )
         .limit(1000)
     ]);
 
@@ -355,16 +662,33 @@
       throw movementsResult.error;
     }
 
-    products = (productsResult.data || []).map(mapProduct);
-    movements = (movementsResult.data || []).map(mapMovement);
+    products =
+      (
+        productsResult.data ||
+        []
+      ).map(mapProduct);
+
+    movements =
+      (
+        movementsResult.data ||
+        []
+      ).map(mapMovement);
   }
 
   async function fetchProfile(user){
-    const { data, error } =
+    const {
+      data,
+      error
+    } =
       await db
         .from('profiles')
-        .select('display_name,role')
-        .eq('id', user.id)
+        .select(
+          'display_name,role'
+        )
+        .eq(
+          'id',
+          user.id
+        )
         .single();
 
     if(error){
@@ -376,16 +700,19 @@
 
   function applyRole(){
     document
-      .querySelectorAll('.admin-only')
-      .forEach(el =>
+      .querySelectorAll(
+        '.admin-only'
+      )
+      .forEach(el => {
         el.classList.toggle(
           'd-none',
           !isAdmin()
-        )
-      );
+        );
+      });
 
     $('userName').textContent =
-      session?.name || 'Usuário';
+      session?.name ||
+      'Usuário';
 
     $('userRole').textContent =
       isAdmin()
@@ -395,7 +722,11 @@
           : 'Somente consulta';
 
     $('userAvatar').textContent =
-      (session?.name || 'U')[0].toUpperCase();
+      (
+        session?.name ||
+        'U'
+      )[0]
+        .toUpperCase();
 
     const dashboardNav =
       document.querySelector(
@@ -403,10 +734,26 @@
       );
 
     if(dashboardNav){
-      dashboardNav.classList.toggle(
-        'd-none',
-        isSales()
+      dashboardNav
+        .classList
+        .toggle(
+          'd-none',
+          isSales()
+        );
+    }
+
+    const settingsNav =
+      document.querySelector(
+        '.sidebar .nav-link[data-view="settings"]'
       );
+
+    if(settingsNav){
+      settingsNav
+        .classList
+        .toggle(
+          'd-none',
+          !isOwner()
+        );
     }
 
     if(isSales()){
@@ -416,13 +763,19 @@
         )
         .forEach(th => {
           const label =
-            th.textContent.trim();
+            th.textContent
+              .trim();
 
           if(
-            label === 'Venda' ||
-            label === 'Ações'
+            label ===
+              'Venda' ||
+            label ===
+              'Ações'
           ){
-            th.classList.remove('d-none');
+            th.classList
+              .remove(
+                'd-none'
+              );
           }
         });
     }
@@ -433,12 +786,17 @@
       await fetchProfile(user);
 
     session = {
-      id: user.id,
-      email: user.email || '',
+      id:
+        user.id,
+
+      email:
+        user.email || '',
+
       name:
         profile.display_name ||
         user.email ||
         'Usuário',
+
       role:
         profile.role ||
         'viewer'
@@ -448,17 +806,23 @@
 
     $('loginScreen')
       .classList
-      .add('d-none');
+      .add(
+        'd-none'
+      );
 
     $('app')
       .classList
-      .remove('d-none');
+      .remove(
+        'd-none'
+      );
 
     applyRole();
     renderAll();
 
     if(isSales()){
-      showView('inventory');
+      showView(
+        'inventory'
+      );
     }
 
     setupRealtime();
@@ -476,7 +840,8 @@
         .toLowerCase();
 
     const password =
-      $('loginPass').value;
+      $('loginPass')
+        .value;
 
     const button =
       event.submitter ||
@@ -485,7 +850,10 @@
           'button[type="submit"]'
         );
 
-    if(!email || !password){
+    if(
+      !email ||
+      !password
+    ){
       setLoginMessage(
         'Informe o e-mail e a senha.'
       );
@@ -500,11 +868,15 @@
     );
 
     try{
-      const { data, error } =
-        await db.auth.signInWithPassword({
-          email,
-          password
-        });
+      const {
+        data,
+        error
+      } =
+        await db.auth
+          .signInWithPassword({
+            email,
+            password
+          });
 
       if(error){
         throw error;
@@ -516,7 +888,9 @@
 
     } catch(error){
       setLoginMessage(
-        friendlyAuthError(error)
+        friendlyAuthError(
+          error
+        )
       );
 
     } finally {
@@ -537,12 +911,16 @@
         .toLowerCase();
 
     const password =
-      $('loginPass').value;
+      $('loginPass')
+        .value;
 
     const button =
       $('signupBtn');
 
-    if(!email || !password){
+    if(
+      !email ||
+      !password
+    ){
       setLoginMessage(
         'Digite o e-mail e uma senha para fazer o primeiro acesso.'
       );
@@ -550,7 +928,10 @@
       return;
     }
 
-    if(password.length < 6){
+    if(
+      password.length <
+      6
+    ){
       setLoginMessage(
         'A senha precisa ter pelo menos 6 caracteres.'
       );
@@ -565,11 +946,15 @@
     );
 
     try{
-      const { data, error } =
-        await db.auth.signUp({
-          email,
-          password
-        });
+      const {
+        data,
+        error
+      } =
+        await db.auth
+          .signUp({
+            email,
+            password
+          });
 
       if(error){
         throw error;
@@ -591,7 +976,9 @@
 
     } catch(error){
       setLoginMessage(
-        friendlyAuthError(error)
+        friendlyAuthError(
+          error
+        )
       );
 
     } finally {
@@ -610,7 +997,8 @@
         );
       }
 
-      await db.auth.signOut();
+      await db.auth
+        .signOut();
 
     } finally {
       location.reload();
@@ -620,32 +1008,57 @@
   function showView(name){
     if(
       (
-        name === 'movements' ||
-        name === 'finance' ||
-        name === 'settings'
+        name ===
+          'movements' ||
+        name ===
+          'finance'
       ) &&
       !isAdmin()
     ){
       return;
     }
 
-    document
-      .querySelectorAll('.view-section')
-      .forEach(v =>
-        v.classList.add('d-none')
-      );
+    if(
+      name ===
+        'settings' &&
+      !isOwner()
+    ){
+      return;
+    }
 
-    $(name + 'View')
-      .classList
-      .remove('d-none');
+    document
+      .querySelectorAll(
+        '.view-section'
+      )
+      .forEach(v => {
+        v.classList
+          .add(
+            'd-none'
+          );
+      });
+
+    const view =
+      $(name + 'View');
+
+    if(!view){
+      return;
+    }
+
+    view.classList
+      .remove(
+        'd-none'
+      );
 
     document
       .querySelectorAll(
         '.sidebar .nav-link'
       )
-      .forEach(b =>
-        b.classList.remove('active')
-      );
+      .forEach(b => {
+        b.classList
+          .remove(
+            'active'
+          );
+      });
 
     const button =
       document.querySelector(
@@ -653,47 +1066,69 @@
       );
 
     if(button){
-      button.classList.add('active');
+      button.classList
+        .add(
+          'active'
+        );
     }
 
     $('sidebar')
       .classList
-      .remove('open');
+      .remove(
+        'open'
+      );
 
-    if(name === 'inventory'){
+    if(
+      name ===
+      'inventory'
+    ){
       renderInventory();
     }
 
-    if(name === 'movements'){
+    if(
+      name ===
+      'movements'
+    ){
       renderMovements();
     }
 
-    if(name === 'finance'){
+    if(
+      name ===
+      'finance'
+    ){
       renderFinance();
     }
   }
 
   function renderDashboard(){
     const stats = {
-      normal: 0,
-      low: 0,
-      zero: 0
+      normal:0,
+      low:0,
+      zero:0
     };
 
-    products.forEach(p => {
-      stats[status(p)]++;
-    });
+    products.forEach(
+      p => {
+        stats[
+          status(p)
+        ]++;
+      }
+    );
 
-    $('statProducts').textContent =
+    $('statProducts')
+      .textContent =
       products.length;
 
-    $('statNormal').textContent =
+    $('statNormal')
+      .textContent =
       stats.normal;
 
-    $('statLow').textContent =
+    $('statLow')
+      .textContent =
       stats.low;
 
-    $('statZero').textContent =
+    $('statZero')
+      .textContent =
       stats.zero;
 
     const attention =
@@ -708,77 +1143,90 @@
             total(a) -
             total(b)
         )
-        .slice(0,8);
+        .slice(
+          0,
+          8
+        );
 
-    $('attentionTable').innerHTML =
-      attention.map(p => `
-        <tr>
-          <td>
-            <b>${esc(p.name)}</b>
-
-            <small class="d-block text-secondary">
-              ${esc(p.code)}
-            </small>
-          </td>
-
-          <td>
-            ${esc(p.category)}
-          </td>
-
-          <td>
-            ${qtyText(
-              p.stock,
-              p.unit === 'L'
-                ? 'L'
-                : ''
-            )}
-          </td>
-
-          <td>
-            ${qtyText(
-              p.pista,
-              p.unit === 'L'
-                ? 'L'
-                : ''
-            )}
-          </td>
-
-          <td>
-            <b>
+    $('attentionTable')
+      .innerHTML =
+      attention
+        .map(p => `
+          <tr>
+            <td>
+              <b>${esc(p.name)}</b>
+              <small class="d-block text-secondary">
+                ${esc(p.code)}
+              </small>
+            </td>
+            <td>
+              ${esc(p.category)}
+            </td>
+            <td>
               ${qtyText(
-                total(p),
+                p.stock,
                 p.unit === 'L'
                   ? 'L'
                   : ''
               )}
-            </b>
-          </td>
-
-          <td>
-            ${pill(status(p))}
+            </td>
+            <td>
+              ${qtyText(
+                p.pista,
+                p.unit === 'L'
+                  ? 'L'
+                  : ''
+              )}
+            </td>
+            <td>
+              <b>
+                ${qtyText(
+                  total(p),
+                  p.unit === 'L'
+                    ? 'L'
+                    : ''
+                )}
+              </b>
+            </td>
+            <td>
+              ${pill(
+                status(p)
+              )}
+            </td>
+          </tr>
+        `)
+        .join('') ||
+      `
+        <tr>
+          <td
+            colspan="6"
+            class="text-center py-4 text-secondary"
+          >
+            Nenhum alerta.
           </td>
         </tr>
-      `).join('') ||
-      '<tr><td colspan="6" class="text-center py-4 text-secondary">Nenhum alerta.</td></tr>';
+      `;
 
     const totals =
-      categories.map(category => ({
-        c: category,
+      categories.map(
+        category => ({
+          c:category,
 
-        n:
-          products
-            .filter(
-              p =>
-                p.category ===
-                category
-            )
-            .reduce(
-              (sum,p) =>
-                sum +
-                total(p),
-              0
-            )
-      }));
+          n:
+            products
+              .filter(
+                p =>
+                  p.category ===
+                  category
+              )
+              .reduce(
+                (sum,p) =>
+                  sum +
+                  total(p),
+                0
+              )
+        })
+      );
 
     const max =
       Math.max(
@@ -788,55 +1236,66 @@
         )
       );
 
-    $('categoryBars').innerHTML =
-      totals.map(x => `
-        <div class="category-row">
+    $('categoryBars')
+      .innerHTML =
+      totals
+        .map(x => `
+          <div class="category-row">
+            <span>
+              ${esc(x.c)}
+            </span>
 
-          <span>
-            ${esc(x.c)}
-          </span>
+            <div class="bar-bg">
+              <div
+                class="bar-fill"
+                style="width:${
+                  Math.max(
+                    2,
+                    x.n /
+                    max *
+                    100
+                  )
+                }%"
+              ></div>
+            </div>
 
-          <div class="bar-bg">
-            <div
-              class="bar-fill"
-              style="width:${
-                Math.max(
-                  2,
-                  x.n / max * 100
+            <b class="text-end">
+              ${
+                Number(
+                  x.n
+                    .toFixed(2)
                 )
-              }%"
-            ></div>
+                  .toLocaleString(
+                    'pt-BR',
+                    {
+                      maximumFractionDigits:2
+                    }
+                  )
+              }${
+                x.c === 'Óleos'
+                  ? ' L'
+                  : ''
+              }
+            </b>
           </div>
-
-          <b class="text-end">
-            ${
-              Number(
-                x.n.toFixed(2)
-              ).toLocaleString(
-                'pt-BR',
-                {
-                  maximumFractionDigits:2
-                }
-              )
-            }${
-              x.c === 'Óleos'
-                ? ' L'
-                : ''
-            }
-          </b>
-
-        </div>
-      `).join('');
+        `)
+        .join('');
 
     renderRecent();
   }
 
   function movementTypeLabel(movement){
-    if(movement.type === 'entry'){
+    if(
+      movement.type ===
+      'entry'
+    ){
       return 'Entrada';
     }
 
-    if(movement.type === 'sale'){
+    if(
+      movement.type ===
+      'sale'
+    ){
       return 'Venda';
     }
 
@@ -844,58 +1303,84 @@
   }
 
   function renderRecent(){
-    $('recentMovements').innerHTML =
+    $('recentMovements')
+      .innerHTML =
       movements
-        .slice(0,5)
+        .slice(
+          0,
+          5
+        )
         .map(m => `
           <div class="movement-item">
-
             <div>
               <b>
-                ${esc(m.productName)}
+                ${esc(
+                  m.productName
+                )}
               </b>
 
               <small>
                 ${
-                  new Date(m.date)
-                    .toLocaleString('pt-BR')
+                  new Date(
+                    m.date
+                  )
+                    .toLocaleString(
+                      'pt-BR'
+                    )
                 }
                 •
                 ${
                   esc(
-                    m.target === 'pista'
+                    m.target ===
+                      'pista'
                       ? 'Pista'
                       : 'Estoque'
                   )
                 }
                 •
                 ${
-                  movementTypeLabel(m)
+                  movementTypeLabel(
+                    m
+                  )
                 }
               </small>
             </div>
 
-            <b class="movement-value ${m.type}">
+            <b
+              class="movement-value ${m.type}"
+            >
               ${
-                m.type === 'entry'
+                m.type ===
+                  'entry'
                   ? '+'
                   : '-'
-              }${qtyText(m.qty)}
+              }${
+                qtyText(
+                  m.qty
+                )
+              }
             </b>
-
           </div>
-        `).join('') ||
-        '<div class="text-secondary text-center py-4">Sem movimentações ainda.</div>';
+        `)
+        .join('') ||
+      `
+        <div class="text-secondary text-center py-4">
+          Sem movimentações ainda.
+        </div>
+      `;
   }
 
   function fillCategorySelects(){
     const selectedFilter =
-      $('categoryFilter').value;
+      $('categoryFilter')
+        .value;
 
     const selectedProductCategory =
-      $('productCategory').value;
+      $('productCategory')
+        .value;
 
-    $('categoryFilter').innerHTML =
+    $('categoryFilter')
+      .innerHTML =
       '<option value="">Todas as categorias</option>' +
       categories
         .map(
@@ -904,7 +1389,8 @@
         )
         .join('');
 
-    $('productCategory').innerHTML =
+    $('productCategory')
+      .innerHTML =
       '<option value="">Selecione a categoria primeiro</option>' +
       categories
         .map(
@@ -934,20 +1420,26 @@
 
   function generateSequentialCode(category){
     const rule =
-      sequenceRules[category];
+      sequenceRules[
+        category
+      ];
 
     if(!rule){
       return '';
     }
 
     const prefix =
-      rule.prefix.toUpperCase();
+      rule.prefix
+        .toUpperCase();
 
     const numbers =
       products
         .map(
           p =>
-            (p.code || '')
+            (
+              p.code ||
+              ''
+            )
               .toUpperCase()
         )
         .filter(
@@ -962,10 +1454,14 @@
               .slice(
                 prefix.length
               )
-              .match(/^(\d+)/);
+              .match(
+                /^(\d+)/
+              );
 
           return match
-            ? Number(match[1])
+            ? Number(
+                match[1]
+              )
             : 0;
         })
         .filter(
@@ -975,7 +1471,9 @@
 
     const next =
       numbers.length
-        ? Math.max(...numbers) + 1
+        ? Math.max(
+            ...numbers
+          ) + 1
         : 1;
 
     return (
@@ -994,12 +1492,17 @@
 
   function extractCodeParts(code){
     const value =
-      (code || '')
+      (
+        code ||
+        ''
+      )
         .trim()
         .toUpperCase();
 
     const index =
-      value.search(/\d/);
+      value.search(
+        /\d/
+      );
 
     if(index < 0){
       return {
@@ -1023,7 +1526,9 @@
         ),
 
       reference:
-        value.slice(index)
+        value.slice(
+          index
+        )
     };
   }
 
@@ -1034,30 +1539,39 @@
           .filter(
             p =>
               p.category ===
-              category &&
+                category &&
               String(
-                p.brand || ''
-              ).trim()
+                p.brand ||
+                ''
+              )
+                .trim()
           )
           .map(
             p =>
-              String(p.brand)
+              String(
+                p.brand
+              )
                 .trim()
           )
       )
-    ].sort(
-      (a,b) =>
-        a.localeCompare(
-          b,
-          'pt-BR',
-          {
-            sensitivity:'base'
-          }
-        )
-    );
+    ]
+      .sort(
+        (a,b) =>
+          a.localeCompare(
+            b,
+            'pt-BR',
+            {
+              sensitivity:
+                'base'
+            }
+          )
+      );
   }
 
-  function prefixesFor(category, brand){
+  function prefixesFor(
+    category,
+    brand
+  ){
     if(
       !category ||
       !brand
@@ -1073,9 +1587,9 @@
         .filter(
           p =>
             p.category ===
-            category &&
+              category &&
             norm(p.brand) ===
-            wanted
+              wanted
         )
         .map(
           p =>
@@ -1086,24 +1600,32 @@
         .filter(Boolean);
 
     return [
-      ...new Set(values)
-    ].sort(
-      (a,b) =>
-        a.localeCompare(
-          b,
-          'pt-BR',
-          {
-            sensitivity:'base'
-          }
-        )
-    );
+      ...new Set(
+        values
+      )
+    ]
+      .sort(
+        (a,b) =>
+          a.localeCompare(
+            b,
+            'pt-BR',
+            {
+              sensitivity:
+                'base'
+            }
+          )
+      );
   }
 
   function selectedProductBrand(){
     const value =
-      $('productBrand').value;
+      $('productBrand')
+        .value;
 
-    if(value === '__other__'){
+    if(
+      value ===
+      '__other__'
+    ){
       return $('productBrandCustom')
         .value
         .trim();
@@ -1114,9 +1636,13 @@
 
   function selectedCodePrefix(){
     const value =
-      $('productCodeFamily').value;
+      $('productCodeFamily')
+        .value;
 
-    if(value === '__other__'){
+    if(
+      value ===
+      '__other__'
+    ){
       return $('productCodeFamilyCustom')
         .value
         .toUpperCase();
@@ -1134,7 +1660,8 @@
         category
       );
 
-    $('productBrand').innerHTML =
+    $('productBrand')
+      .innerHTML =
       '<option value="">Selecione a marca</option>' +
       brands
         .map(
@@ -1164,7 +1691,9 @@
 
         $('productBrandCustomWrap')
           .classList
-          .remove('d-none');
+          .remove(
+            'd-none'
+          );
       }
     } else {
       $('productBrandCustom').value =
@@ -1172,7 +1701,9 @@
 
       $('productBrandCustomWrap')
         .classList
-        .add('d-none');
+        .add(
+          'd-none'
+        );
     }
   }
 
@@ -1187,7 +1718,8 @@
         brand
       );
 
-    $('productCodeFamily').innerHTML =
+    $('productCodeFamily')
+      .innerHTML =
       '<option value="">Selecione a família/prefixo</option>' +
       prefixes
         .map(
@@ -1201,7 +1733,8 @@
       const found =
         prefixes.find(
           prefix =>
-            prefix === selected
+            prefix ===
+            selected
         );
 
       if(found){
@@ -1216,7 +1749,9 @@
 
         $('productCodeFamilyCustomWrap')
           .classList
-          .remove('d-none');
+          .remove(
+            'd-none'
+          );
       }
     } else {
       $('productCodeFamilyCustom').value =
@@ -1224,7 +1759,9 @@
 
       $('productCodeFamilyCustomWrap')
         .classList
-        .add('d-none');
+        .add(
+          'd-none'
+        );
     }
   }
 
@@ -1238,20 +1775,24 @@
       'productCost',
       'productSalePrice',
       'productLocation'
-    ].forEach(id => {
-      const el = $(id);
+    ]
+      .forEach(id => {
+        const el =
+          $(id);
 
-      if(el){
-        el.disabled =
-          !enabled;
-      }
-    });
+        if(el){
+          el.disabled =
+            !enabled;
+        }
+      });
   }
 
   function resetProductCodeFlow(){
-    $('productCode').value = '';
+    $('productCode').value =
+      '';
 
-    $('productBrand').disabled = true;
+    $('productBrand').disabled =
+      true;
 
     $('productBrand').innerHTML =
       '<option value="">Selecione a categoria primeiro</option>';
@@ -1261,11 +1802,15 @@
 
     $('productBrandCustomWrap')
       .classList
-      .add('d-none');
+      .add(
+        'd-none'
+      );
 
     $('productCodeFamilyArea')
       .classList
-      .add('d-none');
+      .add(
+        'd-none'
+      );
 
     $('productCodeFamily').disabled =
       true;
@@ -1278,11 +1823,15 @@
 
     $('productCodeFamilyCustomWrap')
       .classList
-      .add('d-none');
+      .add(
+        'd-none'
+      );
 
     $('productReferenceArea')
       .classList
-      .add('d-none');
+      .add(
+        'd-none'
+      );
 
     $('productCodeReference').value =
       '';
@@ -1300,9 +1849,11 @@
 
   function updateFinalReferenceCode(){
     if(
-      !referenceCategories.has(
-        $('productCategory').value
-      )
+      !referenceCategories
+        .has(
+          $('productCategory')
+            .value
+        )
     ){
       return;
     }
@@ -1323,7 +1874,8 @@
       prefix || '—';
 
     $('productCode').value =
-      prefix && reference
+      prefix &&
+      reference
         ? `${prefix}${reference}`
         : '';
 
@@ -1336,12 +1888,15 @@
   }
 
   function prepareBrandStep(){
-    if($('productId').value){
+    if(
+      $('productId').value
+    ){
       return;
     }
 
     const category =
-      $('productCategory').value;
+      $('productCategory')
+        .value;
 
     resetProductCodeFlow();
 
@@ -1349,19 +1904,24 @@
       return;
     }
 
-    fillBrandOptions(category);
+    fillBrandOptions(
+      category
+    );
 
     $('productBrand').disabled =
       false;
   }
 
   function prepareCodeStep(){
-    if($('productId').value){
+    if(
+      $('productId').value
+    ){
       return;
     }
 
     const category =
-      $('productCategory').value;
+      $('productCategory')
+        .value;
 
     const brand =
       selectedProductBrand();
@@ -1371,11 +1931,15 @@
 
     $('productCodeFamilyArea')
       .classList
-      .add('d-none');
+      .add(
+        'd-none'
+      );
 
     $('productReferenceArea')
       .classList
-      .add('d-none');
+      .add(
+        'd-none'
+      );
 
     $('productCodeFamily').disabled =
       true;
@@ -1392,13 +1956,16 @@
     }
 
     if(
-      referenceCategories.has(
-        category
-      )
+      referenceCategories
+        .has(
+          category
+        )
     ){
       $('productCodeFamilyArea')
         .classList
-        .remove('d-none');
+        .remove(
+          'd-none'
+        );
 
       fillFamilyOptions(
         category,
@@ -1420,12 +1987,16 @@
       code;
 
     setProductDetailFieldsEnabled(
-      Boolean(code)
+      Boolean(
+        code
+      )
     );
   }
 
   function prepareReferenceStep(){
-    if($('productId').value){
+    if(
+      $('productId').value
+    ){
       return;
     }
 
@@ -1453,14 +2024,18 @@
     if(!prefix){
       $('productReferenceArea')
         .classList
-        .add('d-none');
+        .add(
+          'd-none'
+        );
 
       return;
     }
 
     $('productReferenceArea')
       .classList
-      .remove('d-none');
+      .remove(
+        'd-none'
+      );
 
     $('productCodePrefix').textContent =
       prefix;
@@ -1475,65 +2050,77 @@
   function renderInventory(){
     const q =
       norm(
-        $('inventorySearch').value
+        $('inventorySearch')
+          .value
       );
 
     const category =
-      $('categoryFilter').value ||
+      $('categoryFilter')
+        .value ||
       currentCategory;
 
     let stateFilter =
-      $('statusFilter').value;
+      $('statusFilter')
+        .value;
 
     if(
       attentionOnly &&
       !stateFilter
     ){
-      stateFilter = 'low';
+      stateFilter =
+        'low';
     }
 
     const list =
-      products.filter(p =>
-        (
-          !category ||
-          p.category === category
-        ) &&
-        (
-          !stateFilter ||
+      products.filter(
+        p =>
           (
-            stateFilter === 'low'
-              ? status(p) !==
-                'normal'
-              : status(p) ===
-                stateFilter
+            !category ||
+            p.category ===
+              category
+          ) &&
+          (
+            !stateFilter ||
+            (
+              stateFilter ===
+                'low'
+                ? status(p) !==
+                  'normal'
+                : status(p) ===
+                  stateFilter
+            )
+          ) &&
+          (
+            !missingPriceOnly ||
+            nullableNumber(
+              p.cost
+            ) === null ||
+            n(p.cost) <= 0 ||
+            nullableNumber(
+              p.salePrice
+            ) === null ||
+            n(p.salePrice) <= 0
+          ) &&
+          (
+            !q ||
+            norm([
+              p.code,
+              p.name,
+              p.brand,
+              p.category,
+              p.type,
+              p.location,
+              p.erpCode,
+              p.barcode
+            ].join(' '))
+              .includes(q)
           )
-        ) &&
-        (
-          !missingPriceOnly ||
-          nullableNumber(p.cost) === null ||
-          n(p.cost) <= 0 ||
-          nullableNumber(p.salePrice) === null ||
-          n(p.salePrice) <= 0
-        ) &&
-        (
-          !q ||
-          norm([
-            p.code,
-            p.name,
-            p.brand,
-            p.category,
-            p.type,
-            p.location,
-            p.erpCode,
-            p.barcode
-          ].join(' '))
-            .includes(q)
-        )
       );
 
     $('resultCount').textContent =
       `${list.length} produto${
-        list.length === 1
+        list.length ===
+          1
           ? ''
           : 's'
       }`;
@@ -1544,26 +2131,35 @@
 
           <td>
             <b>
-              ${esc(p.code)}
+              ${esc(
+                p.code
+              )}
             </b>
           </td>
 
           <td>
-            ${esc(p.name)}
+            ${esc(
+              p.name
+            )}
           </td>
 
           <td>
-            ${esc(p.brand)}
+            ${esc(
+              p.brand
+            )}
           </td>
 
           <td>
-            ${esc(p.category)}
+            ${esc(
+              p.category
+            )}
           </td>
 
           <td>
             ${qtyText(
               p.stock,
-              p.unit === 'L'
+              p.unit ===
+                'L'
                 ? 'L'
                 : ''
             )}
@@ -1572,7 +2168,8 @@
           <td>
             ${qtyText(
               p.pista,
-              p.unit === 'L'
+              p.unit ===
+                'L'
                 ? 'L'
                 : ''
             )}
@@ -1582,7 +2179,8 @@
             <b>
               ${qtyText(
                 total(p),
-                p.unit === 'L'
+                p.unit ===
+                  'L'
                   ? 'L'
                   : ''
               )}
@@ -1590,31 +2188,43 @@
           </td>
 
           <td>
-            ${esc(p.location)}
+            ${esc(
+              p.location
+            )}
           </td>
 
           <td>
-            ${pill(status(p))}
+            ${pill(
+              status(p)
+            )}
           </td>
 
           <td class="admin-only ${isAdmin() ? '' : 'd-none'}">
             ${
-              n(p.cost) > 0
-                ? money(p.cost)
+              n(p.cost) >
+                0
+                ? money(
+                    p.cost
+                  )
                 : '<span class="text-warning">Não informado</span>'
             }
           </td>
 
           <td class="${canSell() ? '' : 'd-none'}">
             ${
-              n(p.salePrice) > 0
-                ? money(p.salePrice)
+              n(p.salePrice) >
+                0
+                ? money(
+                    p.salePrice
+                  )
                 : '<span class="text-warning">Não informado</span>'
             }
           </td>
 
           <td class="admin-only ${isAdmin() ? '' : 'd-none'}">
-            ${marginText(p)}
+            ${marginText(
+              p
+            )}
           </td>
 
           <td class="${canSell() ? '' : 'd-none'}">
@@ -1662,19 +2272,31 @@
           </td>
 
         </tr>
-      `).join('') ||
-      '<tr><td colspan="13" class="text-center py-5 text-secondary">Nenhum produto encontrado.</td></tr>';
+      `)
+      .join('') ||
+      `
+        <tr>
+          <td
+            colspan="13"
+            class="text-center py-5 text-secondary"
+          >
+            Nenhum produto encontrado.
+          </td>
+        </tr>
+      `;
   }
 
   function updateProductMarginPreview(){
     const cost =
       nullableNumber(
-        $('productCost').value
+        $('productCost')
+          .value
       );
 
     const price =
       nullableNumber(
-        $('productSalePrice').value
+        $('productSalePrice')
+          .value
       );
 
     const margin =
@@ -1686,13 +2308,17 @@
     $('productMarginPreview').textContent =
       margin === null
         ? '—'
-        : `${money(price - cost)} de lucro • ${
-            margin.toLocaleString(
-              'pt-BR',
-              {
-                maximumFractionDigits:1
-              }
-            )
+        : `${money(
+            price -
+            cost
+          )} de lucro • ${
+            margin
+              .toLocaleString(
+                'pt-BR',
+                {
+                  maximumFractionDigits:1
+                }
+              )
           }%`;
   }
 
@@ -1734,12 +2360,14 @@
       p?.minStock ?? 3;
 
     $('productCost').value =
-      n(p?.cost) > 0
+      n(p?.cost) >
+        0
         ? p.cost
         : '';
 
     $('productSalePrice').value =
-      n(p?.salePrice) > 0
+      n(p?.salePrice) >
+        0
         ? p.salePrice
         : '';
 
@@ -1769,13 +2397,16 @@
         );
 
       if(
-        referenceCategories.has(
-          p.category
-        )
+        referenceCategories
+          .has(
+            p.category
+          )
       ){
         $('productCodeFamilyArea')
           .classList
-          .remove('d-none');
+          .remove(
+            'd-none'
+          );
 
         fillFamilyOptions(
           p.category,
@@ -1791,24 +2422,32 @@
 
         $('productReferenceArea')
           .classList
-          .remove('d-none');
+          .remove(
+            'd-none'
+          );
 
         $('productCodePrefix').textContent =
-          parts.prefix || '—';
+          parts.prefix ||
+          '—';
 
         $('productCodeReference').value =
           parts.reference;
 
         $('productCodeReference').disabled =
           true;
+
       } else {
         $('productCodeFamilyArea')
           .classList
-          .add('d-none');
+          .add(
+            'd-none'
+          );
 
         $('productReferenceArea')
           .classList
-          .add('d-none');
+          .add(
+            'd-none'
+          );
       }
 
       $('productCode').value =
@@ -1840,7 +2479,8 @@
       products.find(
         x =>
           x.id ===
-          $('movementProduct').value
+          $('movementProduct')
+            .value
       );
 
     if(!product){
@@ -1848,7 +2488,8 @@
     }
 
     const liters =
-      product.unit === 'L';
+      product.unit ===
+      'L';
 
     $('movementQty').min =
       liters
@@ -1862,7 +2503,8 @@
 
     if(
       n(
-        $('movementQty').value
+        $('movementQty')
+          .value
       ) <= 0
     ){
       $('movementQty').value =
@@ -1874,20 +2516,23 @@
 
   function updateSaleFields(){
     const type =
-      $('movementType').value;
+      $('movementType')
+        .value;
 
     const product =
       products.find(
         x =>
           x.id ===
-          $('movementProduct').value
+          $('movementProduct')
+            .value
       );
 
     const qty =
       Math.max(
         0.01,
         n(
-          $('movementQty').value
+          $('movementQty')
+            .value
         )
       );
 
@@ -1895,16 +2540,21 @@
       .classList
       .toggle(
         'd-none',
-        type !== 'sale'
+        type !==
+          'sale'
       );
 
-    if(type !== 'sale'){
+    if(
+      type !==
+      'sale'
+    ){
       return;
     }
 
     const price =
       nullableNumber(
-        $('movementUnitPrice').value
+        $('movementUnitPrice')
+          .value
       );
 
     const cost =
@@ -1913,7 +2563,8 @@
       );
 
     $('movementUnitCost').textContent =
-      cost && cost > 0
+      cost &&
+      cost > 0
         ? money(cost)
         : 'Não informado';
 
@@ -1928,11 +2579,14 @@
     }
 
     const revenue =
-      price * qty;
+      price *
+      qty;
 
     if(isSales()){
       $('movementSaleSummary').textContent =
-        `${money(revenue)} total da venda`;
+        `${money(
+          revenue
+        )} total da venda`;
 
       return;
     }
@@ -1943,14 +2597,16 @@
         cost > 0
           ? cost
           : 0
-      ) * qty;
+      ) *
+      qty;
 
     const profit =
       revenue -
       grossCost;
 
     const margin =
-      cost && cost > 0
+      cost &&
+      cost > 0
         ? marginPct(
             cost,
             price
@@ -1958,19 +2614,25 @@
         : null;
 
     $('movementSaleSummary').textContent =
-      `${money(revenue)} faturamento • ${
-        cost && cost > 0
-          ? money(profit) +
+      `${money(
+        revenue
+      )} faturamento • ${
+        cost &&
+        cost > 0
+          ? money(
+              profit
+            ) +
             ' lucro bruto' +
             (
               margin !== null
                 ? ' • ' +
-                  margin.toLocaleString(
-                    'pt-BR',
-                    {
-                      maximumFractionDigits:1
-                    }
-                  ) +
+                  margin
+                    .toLocaleString(
+                      'pt-BR',
+                      {
+                        maximumFractionDigits:1
+                      }
+                    ) +
                   '%'
                 : ''
             )
@@ -1988,7 +2650,8 @@
 
     if(
       isSales() &&
-      type !== 'sale'
+      type !==
+        'sale'
     ){
       toast(
         'Este acesso permite somente registrar vendas.'
@@ -2001,17 +2664,21 @@
       type;
 
     $('movementTitle').textContent =
-      type === 'entry'
+      type ===
+        'entry'
         ? 'Entrada de estoque'
-        : type === 'sale'
+        : type ===
+            'sale'
           ? 'Registrar venda'
           : 'Saída de estoque';
 
     $('movementSubmit').className =
       `btn ${
-        type === 'entry'
+        type ===
+          'entry'
           ? 'btn-success'
-          : type === 'sale'
+          : type ===
+              'sale'
             ? 'btn-warning'
             : 'btn-danger'
       }`;
@@ -2021,24 +2688,20 @@
         .slice()
         .sort(
           (a,b) =>
-            a.name.localeCompare(
-              b.name
-            )
+            a.name
+              .localeCompare(
+                b.name
+              )
         )
         .map(
           p =>
-            `<option value="${esc(p.id)}">${
-              esc(p.code)
-            } — ${
-              esc(p.name)
-            } (${
-              qtyText(
-                total(p),
-                p.unit === 'L'
-                  ? 'L'
-                  : ''
-              )
-            })</option>`
+            `<option value="${esc(p.id)}">${esc(p.code)} — ${esc(p.name)} (${qtyText(
+              total(p),
+              p.unit ===
+                'L'
+                ? 'L'
+                : ''
+            )})</option>`
         )
         .join('');
 
@@ -2062,11 +2725,15 @@
       products.find(
         x =>
           x.id ===
-          $('movementProduct').value
+          $('movementProduct')
+            .value
       );
 
     $('movementUnitPrice').value =
-      n(product?.salePrice) > 0
+      n(
+        product?.salePrice
+      ) >
+      0
         ? product.salePrice
         : '';
 
@@ -2075,13 +2742,16 @@
 
     const costWrap =
       $('movementUnitCost')
-        ?.closest('.col-6');
+        ?.closest(
+          '.col-6'
+        );
 
     if(costWrap){
-      costWrap.classList.toggle(
-        'd-none',
-        isSales()
-      );
+      costWrap.classList
+        .toggle(
+          'd-none',
+          isSales()
+        );
     }
 
     updateSaleFields();
@@ -2095,97 +2765,131 @@
 
   function renderMovements(){
     $('movementTable').innerHTML =
-      movements.map(m => {
+      movements
+        .map(m => {
+          const badge =
+            m.type ===
+              'entry'
+              ? '<span class="badge text-bg-success">Entrada</span>'
+              : m.type ===
+                  'sale'
+                ? '<span class="badge text-bg-warning">Venda</span>'
+                : '<span class="badge text-bg-danger">Saída</span>';
 
-        const badge =
-          m.type === 'entry'
-            ? '<span class="badge text-bg-success">Entrada</span>'
-            : m.type === 'sale'
-              ? '<span class="badge text-bg-warning">Venda</span>'
-              : '<span class="badge text-bg-danger">Saída</span>';
+          const value =
+            m.type ===
+              'sale'
+              ? money(
+                  n(
+                    m.unitPrice
+                  ) *
+                  n(
+                    m.qty
+                  )
+                )
+              : '—';
 
-        const value =
-          m.type === 'sale'
-            ? money(
-                n(m.unitPrice) *
-                n(m.qty)
-              )
-            : '—';
+          return `
+            <tr>
+              <td>
+                ${
+                  new Date(
+                    m.date
+                  )
+                    .toLocaleString(
+                      'pt-BR'
+                    )
+                }
+              </td>
 
-        return `
-          <tr>
+              <td>
+                <b>
+                  ${esc(
+                    m.productName
+                  )}
+                </b>
 
-            <td>
-              ${
-                new Date(m.date)
-                  .toLocaleString('pt-BR')
-              }
-            </td>
+                <small class="d-block text-secondary">
+                  ${esc(
+                    m.productCode
+                  )}
+                </small>
+              </td>
 
-            <td>
-              <b>
-                ${esc(m.productName)}
-              </b>
+              <td>
+                ${badge}
+              </td>
 
-              <small class="d-block text-secondary">
-                ${esc(m.productCode)}
-              </small>
-            </td>
+              <td>
+                ${
+                  m.type ===
+                    'entry'
+                    ? '+'
+                    : '-'
+                }${qtyText(
+                  m.qty
+                )}
+              </td>
 
-            <td>
-              ${badge}
-            </td>
+              <td>
+                ${
+                  m.target ===
+                    'pista'
+                    ? 'Pista'
+                    : 'Estoque'
+                }
+              </td>
 
-            <td>
-              ${
-                m.type === 'entry'
-                  ? '+'
-                  : '-'
-              }${qtyText(m.qty)}
-            </td>
+              <td>
+                ${value}
+              </td>
 
-            <td>
-              ${
-                m.target === 'pista'
-                  ? 'Pista'
-                  : 'Estoque'
-              }
-            </td>
-
-            <td>
-              ${value}
-            </td>
-
-            <td>
-              ${esc(
-                m.user ||
-                'Usuário'
-              )}
-            </td>
-
-          </tr>
-        `;
-      }).join('') ||
-      '<tr><td colspan="7" class="text-center py-5 text-secondary">Nenhuma movimentação registrada.</td></tr>';
+              <td>
+                ${esc(
+                  m.user ||
+                  'Usuário'
+                )}
+              </td>
+            </tr>
+          `;
+        })
+        .join('') ||
+      `
+        <tr>
+          <td
+            colspan="7"
+            class="text-center py-5 text-secondary"
+          >
+            Nenhuma movimentação registrada.
+          </td>
+        </tr>
+      `;
   }
 
   function monthKey(date){
     const x =
-      new Date(date);
+      new Date(
+        date
+      );
 
-    return `${x.getFullYear()}-${
-      String(
-        x.getMonth() + 1
-      ).padStart(
-        2,
-        '0'
-      )
-    }`;
+    return (
+      `${x.getFullYear()}-${
+        String(
+          x.getMonth() +
+          1
+        )
+          .padStart(
+            2,
+            '0'
+          )
+      }`
+    );
   }
 
   function selectedMonth(){
     return (
-      $('financeMonth').value ||
+      $('financeMonth')
+        .value ||
       monthKey(
         new Date()
       )
@@ -2196,12 +2900,16 @@
     const key =
       selectedMonth();
 
-    return movements.filter(
-      m =>
-        m.type === 'sale' &&
-        monthKey(m.date) ===
-        key
-    );
+    return movements
+      .filter(
+        m =>
+          m.type ===
+            'sale' &&
+          monthKey(
+            m.date
+          ) ===
+            key
+      );
   }
 
   function renderFinance(){
@@ -2224,33 +2932,53 @@
         n(m.qty);
 
       const r =
-        n(m.unitPrice) *
+        n(
+          m.unitPrice
+        ) *
         qty;
 
       const c =
-        n(m.unitCost) *
+        n(
+          m.unitCost
+        ) *
         qty;
 
-      revenue += r;
-      cost += c;
-      units += qty;
+      revenue +=
+        r;
+
+      cost +=
+        c;
+
+      units +=
+        qty;
 
       const key =
         m.productId ||
         m.productCode;
 
       const row =
-        byProduct.get(key) || {
-          name:m.productName,
-          code:m.productCode,
+        byProduct.get(
+          key
+        ) || {
+          name:
+            m.productName,
+
+          code:
+            m.productCode,
+
           qty:0,
           revenue:0,
           cost:0
         };
 
-      row.qty += qty;
-      row.revenue += r;
-      row.cost += c;
+      row.qty +=
+        qty;
+
+      row.revenue +=
+        r;
+
+      row.cost +=
+        c;
 
       byProduct.set(
         key,
@@ -2259,24 +2987,32 @@
     });
 
     const profit =
-      revenue - cost;
+      revenue -
+      cost;
 
     const margin =
       revenue > 0
         ? (
             profit /
             revenue
-          ) * 100
+          ) *
+          100
         : 0;
 
     $('finRevenue').textContent =
-      money(revenue);
+      money(
+        revenue
+      );
 
     $('finCost').textContent =
-      money(cost);
+      money(
+        cost
+      );
 
     $('finProfit').textContent =
-      money(profit);
+      money(
+        profit
+      );
 
     $('finMargin').textContent =
       `${margin.toLocaleString(
@@ -2287,11 +3023,14 @@
       )}%`;
 
     $('finUnits').textContent =
-      qtyText(units);
+      qtyText(
+        units
+      );
 
     $('finSalesCount').textContent =
       `${sales.length} venda${
-        sales.length === 1
+        sales.length ===
+          1
           ? ''
           : 's'
       }`;
@@ -2299,13 +3038,17 @@
     const missingCost =
       products.filter(
         p =>
-          n(p.cost) <= 0
+          n(
+            p.cost
+          ) <= 0
       ).length;
 
     const missingSale =
       products.filter(
         p =>
-          n(p.salePrice) <= 0
+          n(
+            p.salePrice
+          ) <= 0
       ).length;
 
     $('missingCost').textContent =
@@ -2316,156 +3059,221 @@
 
     $('stockCostValue').textContent =
       money(
-        products.reduce(
-          (sum,p) =>
-            sum +
-            (
-              n(p.cost) *
-              total(p)
-            ),
-          0
-        )
+        products
+          .reduce(
+            (sum,p) =>
+              sum +
+              (
+                n(
+                  p.cost
+                ) *
+                total(p)
+              ),
+            0
+          )
       );
 
     $('stockSaleValue').textContent =
       money(
-        products.reduce(
-          (sum,p) =>
-            sum +
-            (
-              n(p.salePrice) *
-              total(p)
-            ),
-          0
-        )
+        products
+          .reduce(
+            (sum,p) =>
+              sum +
+              (
+                n(
+                  p.salePrice
+                ) *
+                total(p)
+              ),
+            0
+          )
       );
 
     const top =
       [
-        ...byProduct.values()
+        ...byProduct
+          .values()
       ]
         .sort(
           (a,b) =>
             b.revenue -
             a.revenue
         )
-        .slice(0,8);
+        .slice(
+          0,
+          8
+        );
 
     $('topSalesTable').innerHTML =
-      top.map(x => `
-        <tr>
-
-          <td>
-            <b>
-              ${esc(x.name)}
-            </b>
-
-            <small class="d-block text-secondary">
-              ${esc(x.code)}
-            </small>
-          </td>
-
-          <td>
-            ${qtyText(x.qty)}
-          </td>
-
-          <td>
-            ${money(x.revenue)}
-          </td>
-
-          <td>
-            ${
-              money(
-                x.revenue -
-                x.cost
-              )
-            }
-          </td>
-
-        </tr>
-      `).join('') ||
-      '<tr><td colspan="4" class="text-center py-4 text-secondary">Nenhuma venda registrada neste mês.</td></tr>';
-
-    $('financeSalesTable').innerHTML =
-      sales.map(m => {
-
-        const r =
-          n(m.unitPrice) *
-          n(m.qty);
-
-        const c =
-          n(m.unitCost) *
-          n(m.qty);
-
-        const p =
-          r - c;
-
-        const mg =
-          r > 0
-            ? (
-                p / r
-              ) * 100
-            : 0;
-
-        return `
+      top
+        .map(x => `
           <tr>
-
-            <td>
-              ${
-                new Date(m.date)
-                  .toLocaleString('pt-BR')
-              }
-            </td>
-
             <td>
               <b>
-                ${esc(m.productName)}
+                ${esc(
+                  x.name
+                )}
               </b>
 
               <small class="d-block text-secondary">
-                ${esc(m.productCode)}
+                ${esc(
+                  x.code
+                )}
               </small>
             </td>
 
             <td>
-              ${qtyText(m.qty)}
+              ${qtyText(
+                x.qty
+              )}
             </td>
 
             <td>
-              ${money(m.unitPrice)}
+              ${money(
+                x.revenue
+              )}
             </td>
 
             <td>
-              ${
-                n(m.unitCost) > 0
-                  ? money(m.unitCost)
-                  : '<span class="text-warning">Não informado</span>'
-              }
+              ${money(
+                x.revenue -
+                x.cost
+              )}
             </td>
-
-            <td>
-              ${money(r)}
-            </td>
-
-            <td>
-              ${money(p)}
-            </td>
-
-            <td>
-              ${
-                mg.toLocaleString(
-                  'pt-BR',
-                  {
-                    maximumFractionDigits:1
-                  }
-                )
-              }%
-            </td>
-
           </tr>
-        `;
-      }).join('') ||
-      '<tr><td colspan="8" class="text-center py-5 text-secondary">Nenhuma venda registrada neste mês.</td></tr>';
+        `)
+        .join('') ||
+      `
+        <tr>
+          <td
+            colspan="4"
+            class="text-center py-4 text-secondary"
+          >
+            Nenhuma venda registrada neste mês.
+          </td>
+        </tr>
+      `;
+
+    $('financeSalesTable').innerHTML =
+      sales
+        .map(m => {
+          const r =
+            n(
+              m.unitPrice
+            ) *
+            n(
+              m.qty
+            );
+
+          const c =
+            n(
+              m.unitCost
+            ) *
+            n(
+              m.qty
+            );
+
+          const p =
+            r - c;
+
+          const mg =
+            r > 0
+              ? (
+                  p /
+                  r
+                ) *
+                100
+              : 0;
+
+          return `
+            <tr>
+              <td>
+                ${
+                  new Date(
+                    m.date
+                  )
+                    .toLocaleString(
+                      'pt-BR'
+                    )
+                }
+              </td>
+
+              <td>
+                <b>
+                  ${esc(
+                    m.productName
+                  )}
+                </b>
+
+                <small class="d-block text-secondary">
+                  ${esc(
+                    m.productCode
+                  )}
+                </small>
+              </td>
+
+              <td>
+                ${qtyText(
+                  m.qty
+                )}
+              </td>
+
+              <td>
+                ${money(
+                  m.unitPrice
+                )}
+              </td>
+
+              <td>
+                ${
+                  n(
+                    m.unitCost
+                  ) >
+                  0
+                    ? money(
+                        m.unitCost
+                      )
+                    : '<span class="text-warning">Não informado</span>'
+                }
+              </td>
+
+              <td>
+                ${money(
+                  r
+                )}
+              </td>
+
+              <td>
+                ${money(
+                  p
+                )}
+              </td>
+
+              <td>
+                ${
+                  mg
+                    .toLocaleString(
+                      'pt-BR',
+                      {
+                        maximumFractionDigits:1
+                      }
+                    )
+                }%
+              </td>
+            </tr>
+          `;
+        })
+        .join('') ||
+      `
+        <tr>
+          <td
+            colspan="8"
+            class="text-center py-5 text-secondary"
+          >
+            Nenhuma venda registrada neste mês.
+          </td>
+        </tr>
+      `;
   }
 
   function renderAll(){
@@ -2476,7 +3284,8 @@
 
     if(
       $('financeMonth') &&
-      !$('financeMonth').value
+      !$('financeMonth')
+        .value
     ){
       $('financeMonth').value =
         monthKey(
@@ -2528,7 +3337,10 @@
               .map(
                 value =>
                   '"' +
-                  String(value ?? '')
+                  String(
+                    value ??
+                    ''
+                  )
                     .replaceAll(
                       '"',
                       '""'
@@ -2540,14 +3352,17 @@
         .join('\n');
 
     const link =
-      document.createElement('a');
+      document
+        .createElement(
+          'a'
+        );
 
     link.href =
       URL.createObjectURL(
         new Blob(
           [csv],
           {
-            type:'text/csv'
+            type:'text/csv;charset=utf-8'
           }
         )
       );
@@ -2558,10 +3373,11 @@
     link.click();
 
     setTimeout(
-      () =>
+      () => {
         URL.revokeObjectURL(
           link.href
-        ),
+        );
+      },
       500
     );
   }
@@ -2581,22 +3397,36 @@
         'Observação'
       ],
 
-      ...movements.map(m => [
-        new Date(m.date)
-          .toLocaleString('pt-BR'),
+      ...movements
+        .map(m => [
+          new Date(
+            m.date
+          )
+            .toLocaleString(
+              'pt-BR'
+            ),
 
-        m.productCode,
-        m.productName,
-        m.type,
-        m.qty,
-        m.target,
+          m.productCode,
 
-        m.unitPrice ?? '',
-        m.unitCost ?? '',
+          m.productName,
 
-        m.user,
-        m.note || ''
-      ])
+          m.type,
+
+          m.qty,
+
+          m.target,
+
+          m.unitPrice ??
+            '',
+
+          m.unitCost ??
+            '',
+
+          m.user,
+
+          m.note ||
+            ''
+        ])
     ];
 
     csvDownload(
@@ -2605,69 +3435,466 @@
     );
   }
 
-  function exportFinance(){
-    const sales =
-      salesForMonth();
+  async function exportFinance(){
+    if(!isAdmin()){
+      return;
+    }
 
-    const rows = [
-      [
-        'Fechamento',
-        selectedMonth()
-      ],
+    const button =
+      $('exportFinanceBtn');
 
-      [],
-
-      [
-        'Data',
-        'Código',
-        'Produto',
-        'Qtd',
-        'Preço unitário',
-        'Custo unitário',
-        'Faturamento',
-        'Custo',
-        'Lucro bruto'
-      ],
-
-      ...sales.map(m => {
-
-        const revenue =
-          n(m.unitPrice) *
-          n(m.qty);
-
-        const cost =
-          n(m.unitCost) *
-          n(m.qty);
-
-        return [
-          new Date(m.date)
-            .toLocaleString('pt-BR'),
-
-          m.productCode,
-          m.productName,
-          m.qty,
-
-          n(m.unitPrice)
-            .toFixed(2),
-
-          n(m.unitCost)
-            .toFixed(2),
-
-          revenue.toFixed(2),
-          cost.toFixed(2),
-
-          (
-            revenue -
-            cost
-          ).toFixed(2)
-        ];
-      })
-    ];
-
-    csvDownload(
-      rows,
-      `fechamento-${selectedMonth()}-sao-marcos.csv`
+    setBusy(
+      button,
+      true,
+      'Gerando Excel...'
     );
+
+    try{
+      const XLSX =
+        await import(
+          'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm'
+        );
+
+      const sales =
+        salesForMonth();
+
+      const period =
+        selectedMonth();
+
+      let revenue = 0;
+      let cost = 0;
+      let units = 0;
+
+      const detailRows =
+        sales.map(m => {
+          const qty =
+            n(
+              m.qty
+            );
+
+          const unitPrice =
+            n(
+              m.unitPrice
+            );
+
+          const unitCost =
+            n(
+              m.unitCost
+            );
+
+          const rowRevenue =
+            unitPrice *
+            qty;
+
+          const rowCost =
+            unitCost *
+            qty;
+
+          const profit =
+            rowRevenue -
+            rowCost;
+
+          const margin =
+            rowRevenue >
+            0
+              ? profit /
+                rowRevenue
+              : 0;
+
+          revenue +=
+            rowRevenue;
+
+          cost +=
+            rowCost;
+
+          units +=
+            qty;
+
+          return [
+            new Date(
+              m.date
+            )
+              .toLocaleString(
+                'pt-BR'
+              ),
+
+            m.productCode ||
+              '',
+
+            m.productName ||
+              '',
+
+            qty,
+
+            unitPrice,
+
+            unitCost,
+
+            rowRevenue,
+
+            profit,
+
+            margin
+          ];
+        });
+
+      const profit =
+        revenue -
+        cost;
+
+      const margin =
+        revenue >
+        0
+          ? profit /
+            revenue
+          : 0;
+
+      const rows = [
+        [
+          'POSTO SÃO MARCOS — FECHAMENTO FINANCEIRO',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          ''
+        ],
+
+        [
+          `Período: ${period}`,
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          ''
+        ],
+
+        [],
+
+        [
+          'Faturamento',
+          revenue,
+          '',
+          'Custo vendido',
+          cost,
+          '',
+          'Lucro bruto',
+          profit,
+          ''
+        ],
+
+        [
+          'Margem',
+          margin,
+          '',
+          'Itens vendidos',
+          units,
+          '',
+          'Vendas',
+          sales.length,
+          ''
+        ],
+
+        [],
+
+        [
+          'Data',
+          'Código',
+          'Produto',
+          'Qtd.',
+          'Preço unitário',
+          'Custo unitário',
+          'Faturamento',
+          'Lucro bruto',
+          'Margem'
+        ],
+
+        ...detailRows
+      ];
+
+      if(
+        detailRows.length
+      ){
+        rows.push([]);
+
+        rows.push([
+          '',
+          '',
+          'TOTAL',
+          units,
+          '',
+          '',
+          revenue,
+          profit,
+          margin
+        ]);
+      }
+
+      const workbook =
+        XLSX.utils
+          .book_new();
+
+      const worksheet =
+        XLSX.utils
+          .aoa_to_sheet(
+            rows
+          );
+
+      worksheet['!merges'] = [
+        {
+          s:{
+            r:0,
+            c:0
+          },
+
+          e:{
+            r:0,
+            c:8
+          }
+        },
+
+        {
+          s:{
+            r:1,
+            c:0
+          },
+
+          e:{
+            r:1,
+            c:8
+          }
+        }
+      ];
+
+      worksheet['!cols'] = [
+        { wch:21 },
+        { wch:16 },
+        { wch:42 },
+        { wch:10 },
+        { wch:18 },
+        { wch:18 },
+        { wch:18 },
+        { wch:18 },
+        { wch:13 }
+      ];
+
+      worksheet['!rows'] = [
+        { hpt:25 },
+        { hpt:20 },
+        { hpt:8 },
+        { hpt:22 },
+        { hpt:22 },
+        { hpt:8 },
+        { hpt:24 }
+      ];
+
+      const currencyFormat =
+        'R$ #,##0.00';
+
+      const percentFormat =
+        '0.0%';
+
+      if(
+        worksheet['B4']
+      ){
+        worksheet['B4'].z =
+          currencyFormat;
+      }
+
+      if(
+        worksheet['E4']
+      ){
+        worksheet['E4'].z =
+          currencyFormat;
+      }
+
+      if(
+        worksheet['H4']
+      ){
+        worksheet['H4'].z =
+          currencyFormat;
+      }
+
+      if(
+        worksheet['B5']
+      ){
+        worksheet['B5'].z =
+          percentFormat;
+      }
+
+      const headerRowIndex =
+        6;
+
+      const firstDataRowIndex =
+        7;
+
+      const lastDataRowIndex =
+        firstDataRowIndex +
+        detailRows.length -
+        1;
+
+      for(
+        let rowIndex =
+          firstDataRowIndex;
+        rowIndex <=
+          lastDataRowIndex;
+        rowIndex++
+      ){
+        for(
+          const colIndex of [
+            4,
+            5,
+            6,
+            7
+          ]
+        ){
+          const ref =
+            XLSX.utils
+              .encode_cell({
+                r:rowIndex,
+                c:colIndex
+              });
+
+          if(
+            worksheet[
+              ref
+            ]
+          ){
+            worksheet[
+              ref
+            ].z =
+              currencyFormat;
+          }
+        }
+
+        const marginRef =
+          XLSX.utils
+            .encode_cell({
+              r:rowIndex,
+              c:8
+            });
+
+        if(
+          worksheet[
+            marginRef
+          ]
+        ){
+          worksheet[
+            marginRef
+          ].z =
+            percentFormat;
+        }
+      }
+
+      if(
+        detailRows.length
+      ){
+        const totalRowIndex =
+          rows.length -
+          1;
+
+        for(
+          const colIndex of [
+            6,
+            7
+          ]
+        ){
+          const ref =
+            XLSX.utils
+              .encode_cell({
+                r:totalRowIndex,
+                c:colIndex
+              });
+
+          if(
+            worksheet[
+              ref
+            ]
+          ){
+            worksheet[
+              ref
+            ].z =
+              currencyFormat;
+          }
+        }
+
+        const totalMarginRef =
+          XLSX.utils
+            .encode_cell({
+              r:totalRowIndex,
+              c:8
+            });
+
+        if(
+          worksheet[
+            totalMarginRef
+          ]
+        ){
+          worksheet[
+            totalMarginRef
+          ].z =
+            percentFormat;
+        }
+      }
+
+      worksheet[
+        '!autofilter'
+      ] = {
+        ref:
+          `A${
+            headerRowIndex +
+            1
+          }:I${
+            Math.max(
+              headerRowIndex +
+                1,
+              lastDataRowIndex +
+                1
+            )
+          }`
+      };
+
+      XLSX.utils
+        .book_append_sheet(
+          workbook,
+          worksheet,
+          'Fechamento'
+        );
+
+      const writeFile =
+        XLSX.writeFileXLSX ||
+        XLSX.writeFile;
+
+      writeFile(
+        workbook,
+        `fechamento-${period}-sao-marcos.xlsx`
+      );
+
+      toast(
+        'Planilha do fechamento gerada com sucesso.'
+      );
+
+    } catch(error){
+      console.error(
+        'Erro técnico ao gerar planilha:',
+        error
+      );
+
+      toast(
+        'Não foi possível gerar a planilha agora.'
+      );
+
+    } finally {
+      setBusy(
+        button,
+        false
+      );
+    }
   }
 
   async function saveProduct(event){
@@ -2685,10 +3912,12 @@
         );
 
     const oldId =
-      $('productId').value;
+      $('productId')
+        .value;
 
     const category =
-      $('productCategory').value;
+      $('productCategory')
+        .value;
 
     const brand =
       selectedProductBrand();
@@ -2706,30 +3935,34 @@
         'Selecione ou informe a marca.'
       );
 
-      $('productBrand').focus();
+      $('productBrand')
+        .focus();
 
       return;
     }
 
     if(
-      referenceCategories.has(
-        category
-      ) &&
+      referenceCategories
+        .has(
+          category
+        ) &&
       !selectedCodePrefix()
     ){
       toast(
         'Selecione a família/prefixo do código.'
       );
 
-      $('productCodeFamily').focus();
+      $('productCodeFamily')
+        .focus();
 
       return;
     }
 
     if(
-      referenceCategories.has(
-        category
-      ) &&
+      referenceCategories
+        .has(
+          category
+        ) &&
       !$('productCodeReference')
         .value
         .trim()
@@ -2761,8 +3994,12 @@
       !oldId &&
       products.some(
         p =>
-          norm(p.code) ===
-          norm(code)
+          norm(
+            p.code
+          ) ===
+          norm(
+            code
+          )
       )
     ){
       toast(
@@ -2776,7 +4013,8 @@
       oldId
         ? products.find(
             p =>
-              p.id === oldId
+              p.id ===
+              oldId
           )
         : null;
 
@@ -2799,27 +4037,32 @@
 
       stock:
         n(
-          $('productStock').value
+          $('productStock')
+            .value
         ),
 
       pista:
         n(
-          $('productPista').value
+          $('productPista')
+            .value
         ),
 
       min_stock:
         n(
-          $('productMin').value
+          $('productMin')
+            .value
         ),
 
       cost:
         nullableNumber(
-          $('productCost').value
+          $('productCost')
+            .value
         ),
 
       sale_price:
         nullableNumber(
-          $('productSalePrice').value
+          $('productSalePrice')
+            .value
         ),
 
       location:
@@ -2852,25 +4095,39 @@
       if(oldId){
         result =
           await db
-            .from('products')
-            .update(payload)
+            .from(
+              'products'
+            )
+            .update(
+              payload
+            )
             .eq(
               'id',
               oldId
             )
-            .select('id')
+            .select(
+              'id'
+            )
             .single();
 
       } else {
         result =
           await db
-            .from('products')
-            .insert(payload)
-            .select('id')
+            .from(
+              'products'
+            )
+            .insert(
+              payload
+            )
+            .select(
+              'id'
+            )
             .single();
       }
 
-      if(result.error){
+      if(
+        result.error
+      ){
         throw result.error;
       }
 
@@ -2921,11 +4178,13 @@
       $('movementSubmit');
 
     const type =
-      $('movementType').value;
+      $('movementType')
+        .value;
 
     if(
       isSales() &&
-      type !== 'sale'
+      type !==
+        'sale'
     ){
       toast(
         'Este acesso permite somente registrar vendas.'
@@ -2935,20 +4194,24 @@
     }
 
     const id =
-      $('movementProduct').value;
+      $('movementProduct')
+        .value;
 
     const qty =
       n(
-        $('movementQty').value
+        $('movementQty')
+          .value
       );
 
     const target =
-      $('movementTarget').value;
+      $('movementTarget')
+        .value;
 
     const product =
       products.find(
         p =>
-          p.id === id
+          p.id ===
+          id
       );
 
     if(
@@ -2960,22 +4223,28 @@
 
     const available =
       n(
-        product[target]
+        product[
+          target
+        ]
       );
 
     if(
-      type !== 'entry' &&
-      qty > available
+      type !==
+        'entry' &&
+      qty >
+        available
     ){
       toast(
         `Quantidade insuficiente em ${
-          target === 'pista'
+          target ===
+            'pista'
             ? 'pista'
             : 'estoque'
         } (${
           qtyText(
             available,
-            product.unit === 'L'
+            product.unit ===
+              'L'
               ? 'L'
               : ''
           )
@@ -2986,17 +4255,22 @@
     }
 
     const unitPrice =
-      type === 'sale'
+      type ===
+        'sale'
         ? nullableNumber(
-            $('movementUnitPrice').value
+            $('movementUnitPrice')
+              .value
           )
         : null;
 
     if(
-      type === 'sale' &&
+      type ===
+        'sale' &&
       (
-        unitPrice === null ||
-        unitPrice <= 0
+        unitPrice ===
+          null ||
+        unitPrice <=
+          0
       )
     ){
       toast(
@@ -3013,7 +4287,9 @@
     );
 
     try{
-      const { error } =
+      const {
+        error
+      } =
         await db.rpc(
           'register_movement',
           {
@@ -3054,9 +4330,11 @@
       renderAll();
 
       toast(
-        type === 'entry'
+        type ===
+          'entry'
           ? 'Entrada registrada.'
-          : type === 'sale'
+          : type ===
+              'sale'
             ? 'Venda registrada.'
             : 'Saída registrada.'
       );
@@ -3092,6 +4370,7 @@
         async () => {
           try{
             await loadData();
+
             renderAll();
 
           } catch(error){
@@ -3117,7 +4396,6 @@
         .channel(
           'sao-marcos-live'
         )
-
         .on(
           'postgres_changes',
           {
@@ -3127,7 +4405,6 @@
           },
           queueRealtimeReload
         )
-
         .on(
           'postgres_changes',
           {
@@ -3137,7 +4414,6 @@
           },
           queueRealtimeReload
         )
-
         .subscribe();
   }
 
@@ -3155,96 +4431,106 @@
       () =>
         $('sidebar')
           .classList
-          .toggle('open');
+          .toggle(
+            'open'
+          );
 
     document
       .querySelectorAll(
         '[data-view]'
       )
-      .forEach(button =>
-        button.addEventListener(
-          'click',
-          () => {
+      .forEach(
+        button =>
+          button
+            .addEventListener(
+              'click',
+              () => {
+                if(
+                  button.dataset
+                    .filter ===
+                  'attention'
+                ){
+                  attentionOnly =
+                    true;
 
-            if(
-              button.dataset.filter ===
-              'attention'
-            ){
-              attentionOnly =
-                true;
+                  missingPriceOnly =
+                    false;
 
-              missingPriceOnly =
-                false;
+                  currentCategory =
+                    '';
 
-              currentCategory =
-                '';
+                  $('categoryFilter').value =
+                    '';
 
-              $('categoryFilter').value =
-                '';
+                  $('statusFilter').value =
+                    '';
+                }
 
-              $('statusFilter').value =
-                '';
-            }
-
-            showView(
-              button.dataset.view
-            );
-          }
-        )
+                showView(
+                  button.dataset
+                    .view
+                );
+              }
+            )
       );
 
     document
       .querySelectorAll(
         '.category-link'
       )
-      .forEach(button =>
-        button.addEventListener(
-          'click',
-          () => {
+      .forEach(
+        button =>
+          button
+            .addEventListener(
+              'click',
+              () => {
+                attentionOnly =
+                  false;
 
-            attentionOnly =
-              false;
+                missingPriceOnly =
+                  false;
 
-            missingPriceOnly =
-              false;
+                currentCategory =
+                  button.dataset
+                    .category;
 
-            currentCategory =
-              button.dataset.category;
+                showView(
+                  'inventory'
+                );
 
-            showView(
-              'inventory'
-            );
+                $('categoryFilter').value =
+                  currentCategory;
 
-            $('categoryFilter').value =
-              currentCategory;
-
-            renderInventory();
-          }
-        )
+                renderInventory();
+              }
+            )
       );
 
     document
       .querySelectorAll(
         '[data-action]'
       )
-      .forEach(button =>
-        button.addEventListener(
-          'click',
-          () => {
+      .forEach(
+        button =>
+          button
+            .addEventListener(
+              'click',
+              () => {
+                if(
+                  button.dataset
+                    .action ===
+                  'new'
+                ){
+                  openProduct();
 
-            if(
-              button.dataset.action ===
-              'new'
-            ){
-              openProduct();
-            } else {
-              openMovement(
-                button.dataset.action
-              );
-            }
-
-          }
-        )
+                } else {
+                  openMovement(
+                    button.dataset
+                      .action
+                  );
+                }
+              }
+            )
       );
 
     $('newProductBtn').onclick =
@@ -3255,7 +4541,6 @@
       .addEventListener(
         'input',
         () => {
-
           attentionOnly =
             false;
 
@@ -3270,7 +4555,6 @@
       .addEventListener(
         'change',
         () => {
-
           currentCategory =
             '';
 
@@ -3288,7 +4572,6 @@
       .addEventListener(
         'change',
         () => {
-
           attentionOnly =
             false;
 
@@ -3303,41 +4586,40 @@
       .addEventListener(
         'input',
         event => {
-
           if(
-            event.target.value
+            event.target
+              .value
           ){
             showView(
               'inventory'
             );
 
             $('inventorySearch').value =
-              event.target.value;
+              event.target
+                .value;
 
             renderInventory();
           }
-
         }
       );
 
-    document.addEventListener(
-      'keydown',
-      event => {
+    document
+      .addEventListener(
+        'keydown',
+        event => {
+          if(
+            event.ctrlKey &&
+            event.key
+              .toLowerCase() ===
+              'k'
+          ){
+            event.preventDefault();
 
-        if(
-          event.ctrlKey &&
-          event.key
-            .toLowerCase() ===
-            'k'
-        ){
-          event.preventDefault();
-
-          $('globalSearch')
-            .focus();
+            $('globalSearch')
+              .focus();
+          }
         }
-
-      }
-    );
+      );
 
     $('productCategory')
       .addEventListener(
@@ -3349,9 +4631,9 @@
       .addEventListener(
         'change',
         () => {
-
           if(
-            $('productId').value
+            $('productId')
+              .value
           ){
             return;
           }
@@ -3360,12 +4642,14 @@
             .classList
             .toggle(
               'd-none',
-              $('productBrand').value !==
-              '__other__'
+              $('productBrand')
+                .value !==
+                '__other__'
             );
 
           if(
-            $('productBrand').value ===
+            $('productBrand')
+              .value ===
             '__other__'
           ){
             $('productBrandCustom').value =
@@ -3389,15 +4673,16 @@
       .addEventListener(
         'change',
         () => {
-
           if(
-            $('productId').value
+            $('productId')
+              .value
           ){
             return;
           }
 
           if(
-            $('productCodeFamily').value ===
+            $('productCodeFamily')
+              .value ===
             '__other__'
           ){
             $('productCodeFamilyCustom').value =
@@ -3405,7 +4690,9 @@
 
             $('productCodeFamilyCustomWrap')
               .classList
-              .remove('d-none');
+              .remove(
+                'd-none'
+              );
 
             $('productCodeFamilyCustom')
               .focus();
@@ -3419,9 +4706,9 @@
       .addEventListener(
         'input',
         () => {
-
           if(
-            $('productId').value
+            $('productId')
+              .value
           ){
             return;
           }
@@ -3436,12 +4723,15 @@
             prefix;
 
           $('productCodePrefix').textContent =
-            prefix || '—';
+            prefix ||
+            '—';
 
           if(prefix){
             $('productReferenceArea')
               .classList
-              .remove('d-none');
+              .remove(
+                'd-none'
+              );
 
             $('productCodeReference').disabled =
               false;
@@ -3449,7 +4739,9 @@
           } else {
             $('productReferenceArea')
               .classList
-              .add('d-none');
+              .add(
+                'd-none'
+              );
 
             $('productCodeReference').value =
               '';
@@ -3494,24 +4786,26 @@
       .addEventListener(
         'change',
         () => {
-
           const product =
             products.find(
               p =>
                 p.id ===
-                $('movementProduct').value
+                $('movementProduct')
+                  .value
             );
 
           syncMovementQtyRules();
 
           if(
-            $('movementType').value ===
+            $('movementType')
+              .value ===
             'sale'
           ){
             $('movementUnitPrice').value =
               n(
                 product?.salePrice
-              ) > 0
+              ) >
+              0
                 ? product.salePrice
                 : '';
           }
@@ -3555,7 +4849,6 @@
 
     $('showMissingPrices').onclick =
       () => {
-
         missingPriceOnly =
           true;
 
@@ -3587,6 +4880,13 @@
 
     $('resetDataBtn').onclick =
       async () => {
+        if(!isOwner()){
+          toast(
+            'Somente o proprietário pode acessar esta configuração.'
+          );
+
+          return;
+        }
 
         const button =
           $('resetDataBtn');
@@ -3607,7 +4907,9 @@
           );
 
         } catch(error){
-          console.error(error);
+          console.error(
+            error
+          );
 
           toast(
             'Não foi possível recarregar os dados.'
@@ -3650,7 +4952,9 @@
     bindEvents();
 
     try{
-      const { createClient } =
+      const {
+        createClient
+      } =
         await import(
           'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
         );
@@ -3660,52 +4964,55 @@
           SUPABASE_URL,
           SUPABASE_PUBLISHABLE_KEY,
           {
-            auth: {
-              persistSession:
-                true,
-
-              autoRefreshToken:
-                true,
-
-              detectSessionInUrl:
-                true
+            auth:{
+              persistSession:true,
+              autoRefreshToken:true,
+              detectSessionInUrl:true
             }
           }
         );
 
-      db.auth.onAuthStateChange(
-        event => {
-
-          if(
-            event ===
-            'SIGNED_OUT' &&
-            session
-          ){
-            location.reload();
+      db.auth
+        .onAuthStateChange(
+          event => {
+            if(
+              event ===
+                'SIGNED_OUT' &&
+              session
+            ){
+              location.reload();
+            }
           }
+        );
 
-        }
-      );
-
-      const { data, error } =
-        await db.auth.getSession();
+      const {
+        data,
+        error
+      } =
+        await db.auth
+          .getSession();
 
       if(error){
         throw error;
       }
 
       if(
-        data.session?.user
+        data.session
+          ?.user
       ){
         try{
           await enterApp(
-            data.session.user
+            data.session
+              .user
           );
 
         } catch(error){
-          console.error(error);
+          console.error(
+            error
+          );
 
-          await db.auth.signOut();
+          await db.auth
+            .signOut();
 
           setLoginMessage(
             'Não foi possível carregar seu perfil. Tente entrar novamente.'
