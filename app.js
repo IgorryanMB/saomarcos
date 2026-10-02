@@ -504,6 +504,14 @@
         '<i class="bi bi-cloud-arrow-down me-1"></i>Recarregar dados do Supabase';
     }
 
+    const exportButton =
+      $('exportBtn');
+
+    if(exportButton){
+      exportButton.innerHTML =
+        '<i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel';
+    }
+
     const exportFinanceButton =
       $('exportFinanceBtn');
 
@@ -3324,115 +3332,283 @@
       }!`;
   }
 
-  function csvDownload(
-    rows,
-    name
-  ){
-    const csv =
-      '\ufeff' +
-      rows
-        .map(
-          row =>
-            row
-              .map(
-                value =>
-                  '"' +
-                  String(
-                    value ??
-                    ''
-                  )
-                    .replaceAll(
-                      '"',
-                      '""'
-                    ) +
-                  '"'
-              )
-              .join(';')
-        )
-        .join('\n');
+  async function exportMovements(){
+    if(!isAdmin()){
+      return;
+    }
 
-    const link =
-      document
-        .createElement(
-          'a'
+    const button =
+      $('exportBtn');
+
+    setBusy(
+      button,
+      true,
+      'Gerando Excel...'
+    );
+
+    try{
+      const XLSX =
+        await import(
+          'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm'
         );
 
-    link.href =
-      URL.createObjectURL(
-        new Blob(
-          [csv],
-          {
-            type:'text/csv;charset=utf-8'
+      const generatedAt =
+        new Date();
+
+      const counts = {
+        entry:0,
+        exit:0,
+        sale:0
+      };
+
+      const detailRows =
+        movements.map(m => {
+          if(
+            Object.prototype.hasOwnProperty.call(
+              counts,
+              m.type
+            )
+          ){
+            counts[m.type]++;
           }
-        )
+
+          const typeLabel =
+            m.type === 'entry'
+              ? 'Entrada'
+              : m.type === 'sale'
+                ? 'Venda'
+                : 'Saída';
+
+          const targetLabel =
+            m.target === 'pista'
+              ? 'Pista'
+              : 'Estoque';
+
+          const unitPrice =
+            m.type === 'sale'
+              ? nullableNumber(m.unitPrice)
+              : null;
+
+          const unitCost =
+            nullableNumber(m.unitCost);
+
+          const totalValue =
+            m.type === 'sale' &&
+            unitPrice !== null
+              ? unitPrice * n(m.qty)
+              : null;
+
+          return [
+            new Date(m.date),
+            m.productCode || '',
+            m.productName || '',
+            typeLabel,
+            n(m.qty),
+            targetLabel,
+            unitPrice,
+            unitCost,
+            totalValue,
+            m.user || '',
+            m.note || ''
+          ];
+        });
+
+      const rows = [
+        [
+          'POSTO SÃO MARCOS — RELATÓRIO DE MOVIMENTAÇÕES',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          ''
+        ],
+
+        [
+          `Gerado em: ${generatedAt.toLocaleString('pt-BR')}`,
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          ''
+        ],
+
+        [],
+
+        [
+          'Total de movimentações',
+          movements.length,
+          '',
+          'Entradas',
+          counts.entry,
+          '',
+          'Saídas',
+          counts.exit,
+          '',
+          'Vendas',
+          counts.sale
+        ],
+
+        [],
+
+        [
+          'Data',
+          'Código',
+          'Produto',
+          'Tipo',
+          'Quantidade',
+          'Local',
+          'Preço unitário',
+          'Custo unitário',
+          'Valor da venda',
+          'Usuário',
+          'Observação'
+        ],
+
+        ...detailRows
+      ];
+
+      const workbook =
+        XLSX.utils.book_new();
+
+      const worksheet =
+        XLSX.utils.aoa_to_sheet(
+          rows,
+          { cellDates:true }
+        );
+
+      worksheet['!merges'] = [
+        {
+          s:{ r:0, c:0 },
+          e:{ r:0, c:10 }
+        },
+        {
+          s:{ r:1, c:0 },
+          e:{ r:1, c:10 }
+        }
+      ];
+
+      worksheet['!cols'] = [
+        { wch:21 },
+        { wch:16 },
+        { wch:42 },
+        { wch:13 },
+        { wch:13 },
+        { wch:12 },
+        { wch:17 },
+        { wch:17 },
+        { wch:17 },
+        { wch:22 },
+        { wch:36 }
+      ];
+
+      worksheet['!rows'] = [
+        { hpt:25 },
+        { hpt:20 },
+        { hpt:8 },
+        { hpt:22 },
+        { hpt:8 },
+        { hpt:24 }
+      ];
+
+      const firstDataRowIndex =
+        6;
+
+      const lastDataRowIndex =
+        firstDataRowIndex +
+        detailRows.length -
+        1;
+
+      for(
+        let rowIndex = firstDataRowIndex;
+        rowIndex <= lastDataRowIndex;
+        rowIndex++
+      ){
+        const dateRef =
+          XLSX.utils.encode_cell({
+            r:rowIndex,
+            c:0
+          });
+
+        if(worksheet[dateRef]){
+          worksheet[dateRef].t = 'd';
+          worksheet[dateRef].z =
+            'dd/mm/yyyy hh:mm';
+        }
+
+        for(
+          const colIndex of [6,7,8]
+        ){
+          const ref =
+            XLSX.utils.encode_cell({
+              r:rowIndex,
+              c:colIndex
+            });
+
+          if(worksheet[ref]){
+            worksheet[ref].z =
+              'R$ #,##0.00';
+          }
+        }
+      }
+
+      worksheet['!autofilter'] = {
+        ref:
+          `A6:K${Math.max(
+            6,
+            lastDataRowIndex + 1
+          )}`
+      };
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        'Movimentações'
       );
 
-    link.download =
-      name;
+      const writeFile =
+        XLSX.writeFileXLSX ||
+        XLSX.writeFile;
 
-    link.click();
+      const dateKey =
+        generatedAt
+          .toISOString()
+          .slice(0,10);
 
-    setTimeout(
-      () => {
-        URL.revokeObjectURL(
-          link.href
-        );
-      },
-      500
-    );
-  }
+      writeFile(
+        workbook,
+        `movimentacoes-sao-marcos-${dateKey}.xlsx`
+      );
 
-  function exportCSV(){
-    const rows = [
-      [
-        'Data',
-        'Código',
-        'Produto',
-        'Tipo',
-        'Quantidade',
-        'Destino',
-        'Preço Unitário',
-        'Custo Unitário',
-        'Usuário',
-        'Observação'
-      ],
+      toast(
+        'Planilha de movimentações gerada com sucesso.'
+      );
 
-      ...movements
-        .map(m => [
-          new Date(
-            m.date
-          )
-            .toLocaleString(
-              'pt-BR'
-            ),
+    } catch(error){
+      console.error(
+        'Erro técnico ao gerar planilha de movimentações:',
+        error
+      );
 
-          m.productCode,
+      toast(
+        'Não foi possível gerar a planilha de movimentações agora.'
+      );
 
-          m.productName,
-
-          m.type,
-
-          m.qty,
-
-          m.target,
-
-          m.unitPrice ??
-            '',
-
-          m.unitCost ??
-            '',
-
-          m.user,
-
-          m.note ||
-            ''
-        ])
-    ];
-
-    csvDownload(
-      rows,
-      'movimentacoes-sao-marcos.csv'
-    );
+    } finally {
+      setBusy(
+        button,
+        false
+      );
+    }
   }
 
   async function exportFinance(){
@@ -4836,7 +5012,7 @@
       );
 
     $('exportBtn').onclick =
-      exportCSV;
+      exportMovements;
 
     $('exportFinanceBtn').onclick =
       exportFinance;
