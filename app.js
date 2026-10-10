@@ -520,6 +520,38 @@
         '<i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel';
     }
 
+    const productFooter =
+      $('productForm')
+        ?.querySelector(
+          '.modal-footer'
+        );
+
+    if(
+      productFooter &&
+      !$('deleteProductBtn')
+    ){
+      const deleteButton =
+        document.createElement(
+          'button'
+        );
+
+      deleteButton.type =
+        'button';
+
+      deleteButton.id =
+        'deleteProductBtn';
+
+      deleteButton.className =
+        'btn btn-outline-danger me-auto d-none';
+
+      deleteButton.innerHTML =
+        '<i class="bi bi-trash me-1"></i>Excluir produto';
+
+      productFooter.prepend(
+        deleteButton
+      );
+    }
+
     [
       'productStock',
       'productPista',
@@ -2238,13 +2270,29 @@
           <td class="${canSell() ? '' : 'd-none'}">
             <div class="action-btns">
 
-              <button
-                class="btn btn-sm btn-outline-warning"
-                onclick="SM.move('${encodeURIComponent(p.id)}','sale')"
-                title="Venda"
-              >
-                <i class="bi bi-cart-check"></i>
-              </button>
+              ${
+                !isSales() ||
+                n(p.pista) > 0
+                  ? `
+                    <button
+                      class="btn btn-sm btn-outline-warning"
+                      onclick="SM.move('${encodeURIComponent(p.id)}','sale')"
+                      title="Venda"
+                    >
+                      <i class="bi bi-cart-check"></i>
+                    </button>
+                  `
+                  : `
+                    <button
+                      class="btn btn-sm btn-outline-secondary"
+                      type="button"
+                      disabled
+                      title="Sem unidades disponíveis na pista"
+                    >
+                      <i class="bi bi-cart-x"></i>
+                    </button>
+                  `
+              }
 
               ${
                 isAdmin()
@@ -2337,6 +2385,18 @@
 
     const editing =
       Boolean(p);
+
+    const deleteButton =
+      $('deleteProductBtn');
+
+    if(deleteButton){
+      deleteButton.classList
+        .toggle(
+          'd-none',
+          !editing ||
+          !isAdmin()
+        );
+    }
 
     $('productModalTitle').textContent =
       editing
@@ -2691,8 +2751,28 @@
             : 'btn-danger'
       }`;
 
+    const movementProducts =
+      isSales()
+        ? products.filter(
+            p =>
+              n(p.pista) >
+              0
+          )
+        : products.slice();
+
+    if(
+      isSales() &&
+      !movementProducts.length
+    ){
+      toast(
+        'Não há produtos disponíveis na pista para venda.'
+      );
+
+      return;
+    }
+
     $('movementProduct').innerHTML =
-      products
+      movementProducts
         .slice()
         .sort(
           (a,b) =>
@@ -2704,7 +2784,9 @@
         .map(
           p =>
             `<option value="${esc(p.id)}">${esc(p.code)} — ${esc(p.name)} (${qtyText(
-              total(p),
+              isSales()
+                ? p.pista
+                : total(p),
               p.unit ===
                 'L'
                 ? 'L'
@@ -2714,6 +2796,19 @@
         .join('');
 
     if(id){
+      if(
+        isSales() &&
+        !movementProducts.some(
+          p => p.id === id
+        )
+      ){
+        toast(
+          'Este produto não está disponível na pista.'
+        );
+
+        return;
+      }
+
       $('movementProduct').value =
         id;
     }
@@ -2722,7 +2817,12 @@
       '1';
 
     $('movementTarget').value =
-      'stock';
+      isSales()
+        ? 'pista'
+        : 'stock';
+
+    $('movementTarget').disabled =
+      isSales();
 
     $('movementNote').value =
       '';
@@ -4073,6 +4173,108 @@
     }
   }
 
+  async function deleteProduct(){
+    if(!isAdmin()){
+      return;
+    }
+
+    const id =
+      $('productId')
+        .value;
+
+    if(!id){
+      return;
+    }
+
+    const product =
+      products.find(
+        p =>
+          p.id ===
+          id
+      );
+
+    if(!product){
+      toast(
+        'Produto não encontrado.'
+      );
+
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Excluir "${product.name}" do estoque?\n\nEle deixará de aparecer no sistema, mas o histórico de movimentações e vendas será preservado.`
+      );
+
+    if(!confirmed){
+      return;
+    }
+
+    const button =
+      $('deleteProductBtn');
+
+    setBusy(
+      button,
+      true,
+      'Excluindo...'
+    );
+
+    try{
+      const {
+        error
+      } =
+        await db
+          .from(
+            'products'
+          )
+          .update({
+            is_active:false,
+            updated_by:session.id
+          })
+          .eq(
+            'id',
+            id
+          );
+
+      if(error){
+        throw error;
+      }
+
+      await loadData();
+
+      bootstrap.Modal
+        .getInstance(
+          $('productModal')
+        )
+        ?.hide();
+
+      renderAll();
+
+      toast(
+        'Produto excluído do estoque.'
+      );
+
+    } catch(error){
+      console.error(
+        'Erro técnico ao excluir produto:',
+        error
+      );
+
+      toast(
+        friendlyDataError(
+          error,
+          'Não foi possível excluir o produto.'
+        )
+      );
+
+    } finally {
+      setBusy(
+        button,
+        false
+      );
+    }
+  }
+
   async function saveProduct(event){
     event.preventDefault();
 
@@ -4382,6 +4584,18 @@
     const target =
       $('movementTarget')
         .value;
+
+    if(
+      isSales() &&
+      target !==
+        'pista'
+    ){
+      toast(
+        'O caixa só pode vender produtos da pista.'
+      );
+
+      return;
+    }
 
     const product =
       products.find(
@@ -4712,6 +4926,11 @@
     $('newProductBtn').onclick =
       () =>
         openProduct();
+
+    if($('deleteProductBtn')){
+      $('deleteProductBtn').onclick =
+        deleteProduct;
+    }
 
     $('inventorySearch')
       .addEventListener(
