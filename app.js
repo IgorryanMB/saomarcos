@@ -662,12 +662,13 @@
   async function loadData(){
     const [
       productsResult,
-      movementsResult
+      movementsResult,
+      sensitiveResult
     ] = await Promise.all([
       db
         .from('products')
         .select(
-          'id,legacy_id,erp_code,barcode,code,name,brand,category,type,stock,pista,min_stock,cost,sale_price,location,unit,is_active,created_at,updated_at'
+          'id,legacy_id,erp_code,barcode,code,name,brand,category,type,stock,pista,min_stock,sale_price,location,unit,is_active,created_at,updated_at'
         )
         .eq(
           'is_active',
@@ -680,18 +681,30 @@
           }
         ),
 
-      db
-        .from('movements')
-        .select(
-          'id,product_id,product_code,product_name,movement_type,qty,target,unit_price,unit_cost,note,created_by_name,created_at'
-        )
-        .order(
-          'created_at',
-          {
-            ascending:false
-          }
-        )
-        .limit(1000)
+      isAdmin()
+        ? db
+            .from('movements')
+            .select(
+              'id,product_id,product_code,product_name,movement_type,qty,target,unit_price,note,created_by_name,created_at'
+            )
+            .order(
+              'created_at',
+              {
+                ascending:false
+              }
+            )
+            .limit(1000)
+        : Promise.resolve({
+            data:[],
+            error:null
+          }),
+
+      isAdmin()
+        ? db.rpc('get_admin_sensitive_data')
+        : Promise.resolve({
+            data:null,
+            error:null
+          })
     ]);
 
     if(productsResult.error){
@@ -702,17 +715,68 @@
       throw movementsResult.error;
     }
 
+    if(sensitiveResult.error){
+      throw sensitiveResult.error;
+    }
+
+    const sensitiveData =
+      sensitiveResult.data || {};
+
+    const productCosts =
+      new Map(
+        (
+          sensitiveData.product_costs ||
+          []
+        ).map(row => [
+          row.id,
+          nullableNumber(row.cost)
+        ])
+      );
+
+    const movementCosts =
+      new Map(
+        (
+          sensitiveData.movement_costs ||
+          []
+        ).map(row => [
+          row.id,
+          nullableNumber(row.unit_cost)
+        ])
+      );
+
     products =
       (
         productsResult.data ||
         []
-      ).map(mapProduct);
+      ).map(row => {
+        const product =
+          mapProduct(row);
+
+        if(isAdmin()){
+          product.cost =
+            productCosts.get(row.id) ??
+            null;
+        }
+
+        return product;
+      });
 
     movements =
       (
         movementsResult.data ||
         []
-      ).map(mapMovement);
+      ).map(row => {
+        const movement =
+          mapMovement(row);
+
+        if(isAdmin()){
+          movement.unitCost =
+            movementCosts.get(row.id) ??
+            null;
+        }
+
+        return movement;
+      });
   }
 
   async function fetchProfile(user){
@@ -4781,7 +4845,7 @@
       );
     }
 
-    realtimeChannel =
+    const channel =
       db
         .channel(
           'sao-marcos-live'
@@ -4794,17 +4858,22 @@
             table:'products'
           },
           queueRealtimeReload
-        )
-        .on(
-          'postgres_changes',
-          {
-            event:'*',
-            schema:'public',
-            table:'movements'
-          },
-          queueRealtimeReload
-        )
-        .subscribe();
+        );
+
+    if(isAdmin()){
+      channel.on(
+        'postgres_changes',
+        {
+          event:'*',
+          schema:'public',
+          table:'movements'
+        },
+        queueRealtimeReload
+      );
+    }
+
+    realtimeChannel =
+      channel.subscribe();
   }
 
   function bindEvents(){
