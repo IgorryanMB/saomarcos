@@ -694,10 +694,12 @@
               }
             )
             .limit(1000)
-        : Promise.resolve({
-            data:[],
-            error:null
-          }),
+        : session?.role === 'viewer'
+          ? db.rpc('get_dashboard_recent_movements')
+          : Promise.resolve({
+              data:[],
+              error:null
+            }),
 
       isAdmin()
         ? db.rpc('get_admin_sensitive_data')
