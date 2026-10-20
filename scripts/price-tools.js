@@ -4,6 +4,8 @@
   let priceHistoryRows = [];
   let priceHistoryProductId = null;
   let priceHistoryPeople = new Map();
+  let priceImportDate = null;
+  let priceImportReady = false;
 
   function priceDelta(oldValue, nextValue, digits = 2) {
     if (oldValue === null || oldValue === undefined || !Number.isFinite(Number(oldValue))) {
@@ -193,11 +195,28 @@
     return {changed, totals};
   }
 
+  function refreshPriceSafety() {
+    const selected = priceCandidates.filter(row=>row.selected);
+    const outdated = selected.filter(row=>row.isOutdated);
+    const requireAck = outdated.length>0 || !priceImportDate;
+    const warn=$('priceOutdatedWarning');
+    const checkbox=$('priceStaleAcknowledge');
+    warn.classList.toggle('d-none',!priceImportReady||!requireAck);
+    warn.textContent = !priceImportDate
+      ? 'Não foi possível identificar a data de emissão do PDF. Confira se os valores são atuais.'
+      : outdated.length+' produto(s) tiveram alterações de preço após a emissão deste PDF. Importar pode restaurar valores antigos.';
+    $('priceStaleAcknowledgeWrap').classList.toggle('d-none',!priceImportReady||!requireAck);
+    if(!requireAck) checkbox.checked=false;
+    const confirm=$('priceConfirmBtn');
+    if(confirm) confirm.disabled=!isAdmin()||!priceImportReady||selected.length===0||
+      (requireAck&&!checkbox.checked);
+  }
+
   function renderPricePreview() {
     const total = priceCandidates.filter(row => row.selected).length;
     const button = $('priceConfirmBtn');
     if (button) {
-      button.disabled = !isAdmin() || total === 0;
+      button.disabled = !isAdmin() || !priceImportReady || total === 0;
       button.textContent = 'Confirmar ' + total + ' atualização' + (total === 1 ? '' : 'ões');
     }
     $('pricePreviewBody').innerHTML = priceCandidates.map((row, index) => {
@@ -207,7 +226,8 @@
         '<td><input type="checkbox" class="form-check-input price-row-check" data-index="' + index +
         '" ' + (row.selected ? 'checked' : '') + '></td>' +
         '<td><b>' + esc(row.product.name) + '</b><small class="d-block text-secondary">' +
-        esc(row.product.erpCode || row.product.code) + '</small></td>' +
+        esc(row.product.erpCode || row.product.code) + '</small>' +
+        (row.isOutdated ? '<small class="d-block text-warning fw-bold">PDF anterior à última alteração deste produto</small>' : '') + '</td>' +
         '<td>' + priceMoney(row.previousCost, costDigits) + ' → <b>' + priceMoney(row.newCost, costDigits) + '</b>' +
         '<small class="d-block text-secondary">' + priceDelta(row.previousCost, row.newCost, costDigits) + '</small></td>' +
         '<td>' + money(row.previousSale) + ' → <b>' + money(row.newSale) + '</b>' +
@@ -215,6 +235,7 @@
         (warning ? '<small class="d-block text-danger fw-bold">Venda abaixo do custo</small>' : '') +
         '</td></tr>';
     }).join('') || '<tr><td colspan="4" class="text-center py-3">Nenhuma alteração identificada.</td></tr>';
+    refreshPriceSafety();
     $('pricePreviewBody').querySelectorAll('.price-row-check').forEach(input => {
       input.addEventListener('change', () => {
         priceCandidates[Number(input.dataset.index)].selected = input.checked;
@@ -230,16 +251,33 @@
     const progress = $('priceImportStatus');
     progress.textContent = 'Lendo o PDF e comparando os preços...';
     priceCandidates = [];
+    priceImportDate = null;
+    priceImportReady = false;
+    $('priceStaleAcknowledge').checked = false;
+    $('priceImportCounts').textContent = '';
     renderPricePreview();
     try {
       const parsed = await extractErpPricePdf(file);
+      const history = await loadPriceHistory();
+      const latest = new Map();
+      for (const row of history) {
+        const time = Date.parse(row.changed_at);
+        if (Number.isFinite(time) && time > (latest.get(row.product_id) || 0)) latest.set(row.product_id,time);
+      }
+      priceImportDate = parsed.reportDate;
       const {changed, totals} = buildPriceCandidates(parsed);
+      for (const row of changed) {
+        row.isOutdated = Boolean(priceImportDate &&
+          (latest.get(row.product.id)||0) > Date.parse(priceImportDate));
+      }
       priceCandidates = changed;
+      priceImportReady = true;
       $('priceImportCounts').textContent =
         totals.rows + ' produtos no PDF • ' + changed.length + ' com alteração • ' +
         totals.unchanged + ' sem mudança • ' + totals.missing + ' não encontrados • ' +
         totals.ambiguous + ' ambíguos • ' + totals.invalid + ' inválidos';
-      progress.textContent = 'Relatório ' + parsed.reportType + ' reconhecido. Prévia pronta; nenhum preço foi alterado.';
+      const docDate = priceImportDate ? new Date(priceImportDate).toLocaleString('pt-BR',{timeZone:'America/Sao_Paulo'}) : 'não identificada';
+      progress.textContent = 'Relatório ' + parsed.reportType + ' • Emitido em: ' + docDate + '. Prévia pronta; nenhum preço foi alterado.';
       renderPricePreview();
     } catch (error) {
       console.error('Leitura do PDF:', error);
@@ -251,7 +289,8 @@
   async function confirmPriceImport() {
     if (!isAdmin()) return;
     const chosen = priceCandidates.filter(row => row.selected);
-    if (!chosen.length) return;
+    if (!priceImportReady || !chosen.length) return;
+    if ((!priceImportDate || chosen.some(row=>row.isOutdated)) && !$('priceStaleAcknowledge').checked) return;
     const lossCount = chosen.filter(row => row.newSale < row.newCost).length;
     if (lossCount && !window.confirm(
       lossCount + ' produto(s) ficarão com preço de venda abaixo do custo. Deseja continuar?'
@@ -273,6 +312,7 @@
       // A gravação já foi confirmada pelo servidor. Falha no refresh NÃO pode
       // fazer o usuário pensar que deve confirmar os mesmos preços novamente.
       priceCandidates = [];
+      priceImportReady = false;
       bootstrap.Modal.getInstance($('priceImportModal'))?.hide();
       toast((data?.updated ?? chosen.length) + ' produto(s) atualizados. Histórico registrado.');
       try {
@@ -382,6 +422,10 @@
       '<input id="pricePdfFile" type="file" accept=".pdf,application/pdf" class="form-control mb-3">' +
       '<div id="priceImportStatus" class="small text-secondary mb-2">Escolha o PDF para começar.</div>' +
       '<div id="priceImportCounts" class="small mb-3"></div>' +
+      '<p id="priceOutdatedWarning" class="alert alert-warning d-none"></p>' +
+      '<label id="priceStaleAcknowledgeWrap" class="d-none align-items-start gap-2 mb-3">' +
+      '<input type="checkbox" id="priceStaleAcknowledge" class="form-check-input mt-1">' +
+      '<span>Conferi o relatório e autorizo utilizar estes valores, mesmo com data ausente ou anterior a alterações existentes.</span></label>' +
       '<div class="d-flex gap-2 flex-wrap mb-2"><button id="priceSelectAll" type="button" class="btn btn-sm btn-outline-light">Selecionar todas</button>' +
       '<button id="priceSelectNone" type="button" class="btn btn-sm btn-outline-light">Desmarcar todas</button></div>' +
       '<div class="table-responsive"><table class="table inventory-table"><thead><tr>' +
@@ -408,11 +452,15 @@
       $('priceImportStatus').textContent = 'Escolha o PDF para começar.';
       $('priceImportCounts').textContent = '';
       priceCandidates = [];
+      priceImportDate = null;
+      priceImportReady = false;
+      $('priceStaleAcknowledge').checked = false;
       renderPricePreview();
       bootstrap.Modal.getOrCreateInstance($('priceImportModal')).show();
     };
     $('openPriceHistoryBtn').onclick = () => openPriceHistory();
     $('pricePdfFile').onchange = readPricePdf;
+    $('priceStaleAcknowledge').onchange = refreshPriceSafety;
     $('priceConfirmBtn').onclick = confirmPriceImport;
     $('priceSelectAll').onclick = () => {
       priceCandidates.forEach(item => {item.selected = true;});
