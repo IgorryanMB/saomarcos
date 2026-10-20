@@ -5137,7 +5137,7 @@
         const column = (left, right) =>
           line.filter(item => item.x >= left * width && item.x < right * width)
             .map(item => item.text).join(' ').replace(/\s+/g, ' ').trim();
-        const code = column(0.014, 0.078);
+        const code = column(0.014, 0.070);
         const sale = parseBrazilianPrice(column(0.800, 0.860));
         const cost = parseBrazilianPrice(column(0.899, 0.954));
         if (/^\d{3,8}$/.test(code) && cost !== null && sale !== null) {
@@ -5283,7 +5283,7 @@
     const all = [];
     for (let offset = 0; offset < 10000; offset += 1000) {
       const {data, error} = await db.from('price_history')
-        .select('id,product_id,cost,sale_price,changed_at,changed_by,source,import_batch')
+        .select('id,product_id,cost,sale_price,changed_at,changed_by,source,import_batch_id')
         .order('changed_at', {ascending: true}).order('id', {ascending: true})
         .range(offset, offset + 999);
       if (error) throw error;
