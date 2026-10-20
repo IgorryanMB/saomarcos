@@ -113,6 +113,12 @@
       const oldCost = product.cost;
       const oldSale = product.salePrice;
       if (oldCost === item.cost && oldSale === item.sale) {totals.unchanged++; continue;}
+      if (changed.some(candidate => candidate.product.id === product.id)) {
+        totals.ambiguous++;
+        const earlier = changed.findIndex(candidate => candidate.product.id === product.id);
+        if (earlier !== -1) changed.splice(earlier, 1);
+        continue;
+      }
       changed.push({
         product, newCost: item.cost, newSale: item.sale,
         previousCost: oldCost, previousSale: oldSale, selected: true
@@ -184,6 +190,7 @@
       lossCount + ' produto(s) ficarão com preço de venda abaixo do custo. Deseja continuar?'
     )) return;
     const button = $('priceConfirmBtn');
+    if (button.disabled) return;
     setBusy(button, true, 'Aplicando...');
     try {
       const changes = chosen.map(row => ({
@@ -195,15 +202,23 @@
       }));
       const {data, error} = await db.rpc('apply_price_import', {p_changes: changes});
       if (error) throw error;
-      await loadData();
-      renderAll();
-      bootstrap.Modal.getInstance($('priceImportModal'))?.hide();
-      toast((data?.updated || chosen.length) + ' produto(s) atualizados. Histórico registrado.');
+
+      // A gravação já foi confirmada pelo servidor. Falha no refresh NÃO pode
+      // fazer o usuário pensar que deve confirmar os mesmos preços novamente.
       priceCandidates = [];
+      bootstrap.Modal.getInstance($('priceImportModal'))?.hide();
+      toast((data?.updated ?? chosen.length) + ' produto(s) atualizados. Histórico registrado.');
+      try {
+        await loadData();
+        renderAll();
+      } catch (refreshError) {
+        console.warn('Preços gravados; atualização da tela indisponível:', refreshError);
+        toast('Preços salvos! Atualize a página para visualizar os novos valores.');
+      }
     } catch (error) {
       console.error('Atualização de preços:', error);
       $('priceImportStatus').textContent =
-        friendlyDataError(error, 'Não foi possível atualizar. Reimporte o PDF para conferir os valores atuais.');
+        friendlyDataError(error, 'Não foi possível confirmar os preços. Reimporte o PDF para conferir os valores atuais.');
     } finally {
       setBusy(button, false);
       renderPricePreview();
