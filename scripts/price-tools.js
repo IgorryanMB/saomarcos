@@ -222,6 +222,7 @@
     $('pricePreviewBody').innerHTML = priceCandidates.map((row, index) => {
       const warning = row.newSale < row.newCost;
       const costDigits = priceFractionDigits(row.previousCost, row.newCost);
+      const saleDigits = priceFractionDigits(row.previousSale, row.newSale);
       return '<tr>' +
         '<td><input type="checkbox" class="form-check-input price-row-check" data-index="' + index +
         '" ' + (row.selected ? 'checked' : '') + '></td>' +
@@ -230,8 +231,8 @@
         (row.isOutdated ? '<small class="d-block text-warning fw-bold">PDF anterior à última alteração deste produto</small>' : '') + '</td>' +
         '<td>' + priceMoney(row.previousCost, costDigits) + ' → <b>' + priceMoney(row.newCost, costDigits) + '</b>' +
         '<small class="d-block text-secondary">' + priceDelta(row.previousCost, row.newCost, costDigits) + '</small></td>' +
-        '<td>' + money(row.previousSale) + ' → <b>' + money(row.newSale) + '</b>' +
-        '<small class="d-block text-secondary">' + priceDelta(row.previousSale, row.newSale) + '</small>' +
+        '<td>' + priceMoney(row.previousSale, saleDigits) + ' → <b>' + priceMoney(row.newSale, saleDigits) + '</b>' +
+        '<small class="d-block text-secondary">' + priceDelta(row.previousSale, row.newSale, saleDigits) + '</small>' +
         (warning ? '<small class="d-block text-danger fw-bold">Venda abaixo do custo</small>' : '') +
         '</td></tr>';
     }).join('') || '<tr><td colspan="4" class="text-center py-3">Nenhuma alteração identificada.</td></tr>';
@@ -364,14 +365,15 @@
     $('priceHistoryCount').textContent = filtered.length + ' alteração' +
       (filtered.length === 1 ? '' : 'ões') + ' no histórico';
     $('priceHistoryBody').innerHTML = filtered.map(item => {
-      const sale = priceDelta(item.old.sale_price, item.row.sale_price);
+      const sale = priceDelta(item.old.sale_price, item.row.sale_price, priceFractionDigits(item.old.sale_price, item.row.sale_price));
       const costDigits = priceFractionDigits(item.old.cost, item.row.cost);
+      const saleDigits = priceFractionDigits(item.old.sale_price, item.row.sale_price);
       const cost = priceDelta(item.old.cost, item.row.cost, costDigits);
       return '<tr><td>' + new Date(item.row.changed_at).toLocaleString('pt-BR') +
         '</td><td><b>' + esc(item.product?.name || item.row.product_id) + '</b></td>' +
         '<td>' + priceMoney(item.old.cost, costDigits) + ' → ' + priceMoney(item.row.cost, costDigits) +
         '<small class="d-block text-secondary">' + cost + '</small></td>' +
-        '<td>' + money(item.old.sale_price) + ' → ' + money(item.row.sale_price) +
+        '<td>' + priceMoney(item.old.sale_price, saleDigits) + ' → ' + priceMoney(item.row.sale_price, saleDigits) +
         '<small class="d-block text-secondary">' + sale + '</small></td>' +
         '<td>' + (item.row.source === 'pdf' ? 'Importação PDF' : 'Manual') +
         '</td><td>' + esc(priceHistoryPeople.get(item.row.changed_by) || 'Sistema') + '</td></tr>';
@@ -418,7 +420,7 @@
       '<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">' +
       '<div class="modal-header"><h5 class="modal-title">Atualização de custo e venda por PDF</h5>' +
       '<button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>' +
-      '<div class="modal-body"><p class="text-secondary">Use o relatório REL011 ou REL024 do ERP. Só os produtos selecionados serão atualizados após a confirmação. Quantidades de estoque não serão alteradas.</p>' +
+      '<div class="modal-body"><p class="text-secondary">Importe o relatório de preços do ERP com as colunas Código, Custo e Venda/À vista. Só os produtos selecionados serão atualizados após a confirmação. Quantidades de estoque não serão alteradas.</p>' +
       '<input id="pricePdfFile" type="file" accept=".pdf,application/pdf" class="form-control mb-3">' +
       '<div id="priceImportStatus" class="small text-secondary mb-2">Escolha o PDF para começar.</div>' +
       '<div id="priceImportCounts" class="small mb-3"></div>' +
