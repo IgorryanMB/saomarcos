@@ -16,3 +16,5 @@ jobs:
         run: node tools/build.mjs --check
       - name: Checar sintaxe do JavaScript entregue
         run: node --check dist/app.bundle.js
+      - name: Testes de regras de preços e permissões
+        run: node --test tests/*.test.mjs
