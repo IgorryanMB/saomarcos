@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const source = fs.readFileSync('dist/app.bundle.js', 'utf8');
-const sandbox = {console};
+const sandbox = {console, window:{}};
 const testBundle = source.replace(
   /\bvoid boot\(\);\s*\}\)\(\);\s*$/,
   "globalThis.__testTools={ parseBrazilianPrice, priceDelta, buildPriceCandidates, " +
