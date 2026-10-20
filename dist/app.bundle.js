@@ -4924,22 +4924,80 @@
   let priceHistoryProductId = null;
   let priceHistoryPeople = new Map();
 
-  function priceDelta(oldValue, nextValue) {
+  function priceDelta(oldValue, nextValue, digits = 2) {
     if (oldValue === null || oldValue === undefined || !Number.isFinite(Number(oldValue))) {
       return 'Novo valor';
     }
     const difference = Number(nextValue) - Number(oldValue);
     const pct = Number(oldValue) === 0 ? null : difference / Number(oldValue) * 100;
-    if (Math.abs(difference) < 0.005) return 'Sem alteração';
-    return (difference > 0 ? '+' : '-') + money(Math.abs(difference)) +
+    if (Math.abs(difference) < 0.0005) return 'Sem alteração';
+    return (difference > 0 ? '+' : '-') + priceMoney(Math.abs(difference), digits) +
       (pct === null ? '' : ' (' + (pct > 0 ? '+' : '') + pct.toFixed(1).replace('.', ',') + '%)');
   }
 
   function parseBrazilianPrice(value) {
     const clean = String(value || '').trim();
-    if (!/^(?:\d{1,3}(?:\.\d{3})+|\d+),\d{2}$/.test(clean)) return null;
+    if (!/^(?:\d{1,3}(?:\.\d{3})+|\d+),\d{2,3}$/.test(clean)) return null;
     const parsed = Number(clean.replace(/\./g, '').replace(',', '.'));
     return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function priceFractionDigits(a, b) {
+    const hasThousandths = [a, b].some(value =>
+      value !== null && value !== undefined &&
+      Number.isFinite(Number(value)) &&
+      Math.abs(Number(value) * 100 - Math.round(Number(value) * 100)) > 0.00001
+    );
+    return hasThousandths ? 3 : 2;
+  }
+
+  function priceMoney(value, digits = 2) {
+    if (value === null || value === undefined || !Number.isFinite(Number(value))) return '—';
+    return Number(value).toLocaleString('pt-BR', {
+      style: 'currency', currency: 'BRL',
+      minimumFractionDigits: digits, maximumFractionDigits: digits
+    });
+  }
+
+  // REL011 = Relação de Produtos (retrato), REL024 = Posição do Estoque (paisagem).
+  // As colunas são lidas pela posição do PDF. NUNCA importar "Estoque Total".
+  function extractErpRowsFromPage(items, width, reportType, pageNumber) {
+    const positions = reportType === 'REL024'
+      ? {code: [0.014, 0.045], cost: [0.692, 0.760], sale: [0.850, 0.922]}
+      : {code: [0.014, 0.070], cost: [0.899, 0.954], sale: [0.800, 0.860]};
+    const ordered = items
+      .filter(item => item.str && item.transform)
+      .map(item => ({
+        text: item.str.trim(),
+        x: item.transform[4],
+        y: item.transform[5]
+      }))
+      .sort((a, b) => b.y - a.y || a.x - b.x);
+
+    const lines = [];
+    for (const item of ordered) {
+      let line = lines[lines.length - 1];
+      if (!line || Math.abs(line[0].y - item.y) > 2.2) {
+        line = [];
+        lines.push(line);
+      }
+      line.push(item);
+    }
+
+    const parsed = [];
+    for (const line of lines) {
+      line.sort((a, b) => a.x - b.x);
+      const column = ([left, right]) =>
+        line.filter(item => item.x >= left * width && item.x < right * width)
+          .map(item => item.text).join(' ').replace(/\s+/g, ' ').trim();
+      const code = column(positions.code);
+      const cost = parseBrazilianPrice(column(positions.cost));
+      const sale = parseBrazilianPrice(column(positions.sale));
+      if (/^\d{3,8}$/.test(code) && cost !== null && sale !== null) {
+        parsed.push({code, cost, sale, page: pageNumber});
+      }
+    }
+    return parsed;
   }
 
   async function extractErpPricePdf(file) {
@@ -4953,54 +5011,31 @@
     if (pdf.numPages > 40) throw new Error('O PDF tem páginas demais (limite de 40).');
 
     const parsed = [];
-    let recognizedReport = false;
-
+    let reportType = null;
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
       const text = content.items.map(item => item.str || '').join(' ');
-      if (/SAO\s+MARCOS\s+AUTO\s+POST/i.test(text) && /REL0?11/i.test(text)) {
-        recognizedReport = true;
+      const marker = text.match(/\bREL0(?:11|24)\b/i);
+      if (/SAO\s+MARCOS\s+AUTO\s+POST/i.test(text) && marker) {
+        const nextType = marker[0].toUpperCase();
+        if (reportType && reportType !== nextType) {
+          throw new Error('O PDF mistura tipos diferentes de relatório. Separe os arquivos.');
+        }
+        reportType = nextType;
       }
+      if (!reportType) continue;
       const width = page.getViewport({scale: 1}).width;
-      const ordered = content.items
-        .filter(item => item.str && item.transform)
-        .map(item => ({
-          text: item.str.trim(),
-          x: item.transform[4],
-          y: item.transform[5]
-        }))
-        .sort((a, b) => b.y - a.y || a.x - b.x);
-
-      const lines = [];
-      for (const item of ordered) {
-        let line = lines[lines.length - 1];
-        if (!line || Math.abs(line[0].y - item.y) > 2.2) {
-          line = [];
-          lines.push(line);
-        }
-        line.push(item);
-      }
-
-      for (const line of lines) {
-        line.sort((a, b) => a.x - b.x);
-        const column = (left, right) =>
-          line.filter(item => item.x >= left * width && item.x < right * width)
-            .map(item => item.text).join(' ').replace(/\s+/g, ' ').trim();
-        const code = column(0.014, 0.070);
-        const sale = parseBrazilianPrice(column(0.800, 0.860));
-        const cost = parseBrazilianPrice(column(0.899, 0.954));
-        if (/^\d{3,8}$/.test(code) && cost !== null && sale !== null) {
-          parsed.push({code, cost, sale, page: i});
-        }
-      }
+      parsed.push(...extractErpRowsFromPage(content.items, width, reportType, i));
     }
-    if (!recognizedReport) {
-      throw new Error('Este não parece ser o relatório REL011 do São Marcos. Nenhum preço foi alterado.');
+
+    if (!reportType) {
+      throw new Error('Este PDF não é um relatório REL011 ou REL024 do São Marcos. Nenhum preço foi alterado.');
     }
     if (!parsed.length) {
-      throw new Error('Não foi possível identificar a tabela de custo e preço à vista. Nenhum preço foi alterado.');
+      throw new Error('Não foi possível identificar custo e preço de venda neste PDF. Nenhum preço foi alterado.');
     }
+    parsed.reportType = reportType;
     return parsed;
   }
 
@@ -5055,13 +5090,14 @@
     }
     $('pricePreviewBody').innerHTML = priceCandidates.map((row, index) => {
       const warning = row.newSale < row.newCost;
+      const costDigits = priceFractionDigits(row.previousCost, row.newCost);
       return '<tr>' +
         '<td><input type="checkbox" class="form-check-input price-row-check" data-index="' + index +
         '" ' + (row.selected ? 'checked' : '') + '></td>' +
         '<td><b>' + esc(row.product.name) + '</b><small class="d-block text-secondary">' +
         esc(row.product.erpCode || row.product.code) + '</small></td>' +
-        '<td>' + money(row.previousCost) + ' → <b>' + money(row.newCost) + '</b>' +
-        '<small class="d-block text-secondary">' + priceDelta(row.previousCost, row.newCost) + '</small></td>' +
+        '<td>' + priceMoney(row.previousCost, costDigits) + ' → <b>' + priceMoney(row.newCost, costDigits) + '</b>' +
+        '<small class="d-block text-secondary">' + priceDelta(row.previousCost, row.newCost, costDigits) + '</small></td>' +
         '<td>' + money(row.previousSale) + ' → <b>' + money(row.newSale) + '</b>' +
         '<small class="d-block text-secondary">' + priceDelta(row.previousSale, row.newSale) + '</small>' +
         (warning ? '<small class="d-block text-danger fw-bold">Venda abaixo do custo</small>' : '') +
@@ -5091,7 +5127,7 @@
         totals.rows + ' produtos no PDF • ' + changed.length + ' com alteração • ' +
         totals.unchanged + ' sem mudança • ' + totals.missing + ' não encontrados • ' +
         totals.ambiguous + ' ambíguos • ' + totals.invalid + ' inválidos';
-      progress.textContent = 'Prévia pronta. Nenhum preço foi alterado ainda.';
+      progress.textContent = 'Relatório ' + parsed.reportType + ' reconhecido. Prévia pronta; nenhum preço foi alterado.';
       renderPricePreview();
     } catch (error) {
       console.error('Leitura do PDF:', error);
@@ -5177,10 +5213,11 @@
       (filtered.length === 1 ? '' : 'ões') + ' no histórico';
     $('priceHistoryBody').innerHTML = filtered.map(item => {
       const sale = priceDelta(item.old.sale_price, item.row.sale_price);
-      const cost = priceDelta(item.old.cost, item.row.cost);
+      const costDigits = priceFractionDigits(item.old.cost, item.row.cost);
+      const cost = priceDelta(item.old.cost, item.row.cost, costDigits);
       return '<tr><td>' + new Date(item.row.changed_at).toLocaleString('pt-BR') +
         '</td><td><b>' + esc(item.product?.name || item.row.product_id) + '</b></td>' +
-        '<td>' + money(item.old.cost) + ' → ' + money(item.row.cost) +
+        '<td>' + priceMoney(item.old.cost, costDigits) + ' → ' + priceMoney(item.row.cost, costDigits) +
         '<small class="d-block text-secondary">' + cost + '</small></td>' +
         '<td>' + money(item.old.sale_price) + ' → ' + money(item.row.sale_price) +
         '<small class="d-block text-secondary">' + sale + '</small></td>' +
@@ -5229,7 +5266,7 @@
       '<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">' +
       '<div class="modal-header"><h5 class="modal-title">Atualização de custo e venda por PDF</h5>' +
       '<button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>' +
-      '<div class="modal-body"><p class="text-secondary">Use o relatório REL011 do ERP. Só os produtos selecionados serão atualizados após a confirmação. Quantidades de estoque não serão alteradas.</p>' +
+      '<div class="modal-body"><p class="text-secondary">Use o relatório REL011 ou REL024 do ERP. Só os produtos selecionados serão atualizados após a confirmação. Quantidades de estoque não serão alteradas.</p>' +
       '<input id="pricePdfFile" type="file" accept=".pdf,application/pdf" class="form-control mb-3">' +
       '<div id="priceImportStatus" class="small text-secondary mb-2">Escolha o PDF para começar.</div>' +
       '<div id="priceImportCounts" class="small mb-3"></div>' +
