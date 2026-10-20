@@ -40,45 +40,81 @@
     });
   }
 
-  // REL011 = Relação de Produtos (retrato), REL024 = Posição do Estoque (paisagem).
-  // As colunas são lidas pela posição do PDF. NUNCA importar "Estoque Total".
-  function extractErpRowsFromPage(items, width, reportType, pageNumber) {
-    const positions = reportType === 'REL024'
-      ? {code: [0.014, 0.045], cost: [0.692, 0.760], sale: [0.850, 0.922]}
-      : {code: [0.014, 0.070], cost: [0.899, 0.954], sale: [0.800, 0.860]};
-    const ordered = items
-      .filter(item => item.str && item.transform)
-      .map(item => ({
-        text: item.str.trim(),
-        x: item.transform[4],
-        y: item.transform[5]
-      }))
-      .sort((a, b) => b.y - a.y || a.x - b.x);
+  function normalizePdfHeading(value) {
+    return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/\s+/g, ' ').trim();
+  }
 
+  // Detecta as colunas pelo CABEÇALHO, não pelo número do relatório.
+  // Total Custo, Total Venda, estoque e markup nunca são preços unitários.
+  function detectPriceColumns(items, width, height) {
+    const headings = {code: [], cost: [], sale: []};
+    for (const item of items) {
+      if (!item.str || !item.transform) continue;
+      const label = normalizePdfHeading(item.str);
+      const x = item.transform[4], y = item.transform[5];
+      if (y < height * 0.55) continue; // cabeçalho da tabela, não rodapé
+      if (/^codigo(?:\s+(?:de\s+)?barras?)?$/.test(label)) headings.code.push({x,y});
+      if (/^(?:(?:preco|valor)\s+(?:de\s+)?)?custo(?:\s+(?:und|un|unitario))?$/.test(label)) headings.cost.push({x,y});
+      if (/^(?:a vista|venda|preco(?:\s+de)?\s+venda|valor(?:\s+de)?\s+venda)$/.test(label)) headings.sale.push({x,y});
+    }
+
+    for (const code of headings.code) {
+      const cost = headings.cost.find(p => Math.abs(p.y-code.y) < 28);
+      const sale = headings.sale.find(p => Math.abs(p.y-code.y) < 28);
+      if (!cost || !sale) continue;
+      const anchors = [code.x, cost.x, sale.x];
+      if (new Set(anchors.map(x=>Math.round(x/width*1000))).size!==3) continue;
+      if (!(code.x < cost.x && code.x < sale.x)) continue;
+      return {code: code.x, cost: cost.x, sale: sale.x, headerY: Math.min(code.y,cost.y,sale.y)};
+    }
+    return null;
+  }
+
+  function extractErpRowsFromPage(items, width, height, pageNumber) {
+    const columns = detectPriceColumns(items,width,height);
+    if (!columns) return {rows:[], columnsFound:false};
+    const ordered = items.filter(item => item.str && item.transform)
+      .map(item => ({text:item.str.trim(), x:item.transform[4], y:item.transform[5]}))
+      .sort((a,b) => b.y-a.y || a.x-b.x);
     const lines = [];
     for (const item of ordered) {
-      let line = lines[lines.length - 1];
-      if (!line || Math.abs(line[0].y - item.y) > 2.2) {
-        line = [];
-        lines.push(line);
+      let line = lines[lines.length-1];
+      if (!line || Math.abs(line[0].y-item.y)>2.2) {
+        line=[];lines.push(line);
       }
       line.push(item);
     }
 
-    const parsed = [];
+    const closest = (items, anchor, limit, predicate) =>
+      items.filter(item=>Math.abs(item.x-anchor) <= limit && predicate(item.text))
+        .sort((a,b)=>Math.abs(a.x-anchor)-Math.abs(b.x-anchor))[0];
+
+    const rows=[];
     for (const line of lines) {
-      line.sort((a, b) => a.x - b.x);
-      const column = ([left, right]) =>
-        line.filter(item => item.x >= left * width && item.x < right * width)
-          .map(item => item.text).join(' ').replace(/\s+/g, ' ').trim();
-      const code = column(positions.code);
-      const cost = parseBrazilianPrice(column(positions.cost));
-      const sale = parseBrazilianPrice(column(positions.sale));
-      if (/^\d{3,8}$/.test(code) && cost !== null && sale !== null) {
-        parsed.push({code, cost, sale, page: pageNumber});
-      }
+      if (line[0].y >= columns.headerY-2) continue;
+      const code = closest(line,columns.code,width*0.023,txt=>/^\d{3,8}$/.test(txt));
+      const cost = closest(line,columns.cost,width*0.036,txt=>parseBrazilianPrice(txt)!==null);
+      const sale = closest(line,columns.sale,width*0.036,txt=>parseBrazilianPrice(txt)!==null);
+      if (!code || !cost || !sale || cost === sale) continue;
+      rows.push({
+        code:code.text,cost:parseBrazilianPrice(cost.text),
+        sale:parseBrazilianPrice(sale.text),page:pageNumber
+      });
     }
-    return parsed;
+    return {rows,columnsFound:true};
+  }
+
+  function parseErpReportDate(text) {
+    const match=String(text).match(/(?:data\s*\/\s*hora|posi[cç][aã]o do estoque)\s*:\s*(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/i);
+    if (!match) return null;
+    const [,day,month,year,hour='00',minute='00',second='00']=match;
+    const d=Number(day),m=Number(month),y=Number(year),h=Number(hour),min=Number(minute),sec=Number(second);
+    if (y<2000||y>2100||m<1||m>12||d<1||d>31||h>23||min>59||sec>59) return null;
+    const timestamp=Date.UTC(y,m-1,d,h+3,min,sec); // horário local do posto: Brasil/SP (UTC-03)
+    const roundtrip=new Date(Date.UTC(y,m-1,d));
+    if (roundtrip.getUTCDate()!==d||roundtrip.getUTCMonth()!==m-1) return null;
+    return new Date(timestamp).toISOString();
   }
 
   async function extractErpPricePdf(file) {
@@ -88,35 +124,30 @@
     const pdfjs = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.mjs');
     pdfjs.GlobalWorkerOptions.workerSrc =
       'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.mjs';
-    const pdf = await pdfjs.getDocument({data: new Uint8Array(await file.arrayBuffer())}).promise;
-    if (pdf.numPages > 40) throw new Error('O PDF tem páginas demais (limite de 40).');
+    const pdf = await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;
+    if (pdf.numPages>40) throw new Error('O PDF tem páginas demais (limite de 40).');
 
-    const parsed = [];
-    let reportType = null;
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const text = content.items.map(item => item.str || '').join(' ');
-      const marker = text.match(/\bREL0(?:11|24)\b/i);
-      if (/SAO\s+MARCOS\s+AUTO\s+POST/i.test(text) && marker) {
-        const nextType = marker[0].toUpperCase();
-        if (reportType && reportType !== nextType) {
-          throw new Error('O PDF mistura tipos diferentes de relatório. Separe os arquivos.');
-        }
-        reportType = nextType;
-      }
-      if (!reportType) continue;
-      const width = page.getViewport({scale: 1}).width;
-      parsed.push(...extractErpRowsFromPage(content.items, width, reportType, i));
+    let companyRecognized=false, pagesWithColumns=0, date=null, reportType='Sem número';
+    const parsed=[];
+    for (let pageNumber=1;pageNumber<=pdf.numPages;pageNumber++) {
+      const page=await pdf.getPage(pageNumber);
+      const content=await page.getTextContent();
+      const text=content.items.map(item=>item.str||'').join(' ');
+      if (/sao\s+marcos\s+auto\s+post/i.test(normalizePdfHeading(text))) companyRecognized=true;
+      const type=text.match(/\bREL\s*0?\d{2,4}\b/i);
+      if (type) reportType=type[0].replace(/\s+/g,'').toUpperCase();
+      if (!date) date=parseErpReportDate(text);
+      const viewport=page.getViewport({scale:1});
+      const extracted=extractErpRowsFromPage(content.items,viewport.width,viewport.height,pageNumber);
+      if (extracted.columnsFound) pagesWithColumns++;
+      parsed.push(...extracted.rows);
     }
-
-    if (!reportType) {
-      throw new Error('Este PDF não é um relatório REL011 ou REL024 do São Marcos. Nenhum preço foi alterado.');
-    }
-    if (!parsed.length) {
-      throw new Error('Não foi possível identificar custo e preço de venda neste PDF. Nenhum preço foi alterado.');
-    }
-    parsed.reportType = reportType;
+    if (!companyRecognized) throw new Error('Este PDF não é um relatório identificado do São Marcos. Nenhum preço foi alterado.');
+    if (pagesWithColumns===0) throw new Error('Não encontrei as colunas Código, Custo e Venda (ou À vista) neste relatório. Nenhum preço foi alterado.');
+    if (pagesWithColumns !== pdf.numPages) throw new Error('Uma ou mais páginas estão sem cabeçalho de preços reconhecível. Importação cancelada por segurança.');
+    if (!parsed.length) throw new Error('Não foi possível extrair os preços unitários com segurança. Nenhum preço foi alterado.');
+    parsed.reportType=reportType;
+    parsed.reportDate=date;
     return parsed;
   }
 
