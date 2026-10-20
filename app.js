@@ -8,6 +8,7 @@
     'finance',
     'exports',
     'mutations',
+    'price-tools',
     'events'
   ];
   const base = new URL('./scripts/', document.currentScript.src);
