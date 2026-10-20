@@ -1,6 +1,6 @@
 # Organização do JavaScript e importação de preços
 
-Esta alteração foi feita **fora da branch main**. Não publicar os arquivos sem antes aplicar e validar a migração do banco.
+**Implantado no repositório oficial em 20/10/2026.** A migração foi aplicada no Supabase e o site passou a referenciar `dist/app.bundle.js`. Em cada atualização posterior, manter o bundle sincronizado e revisar as permissões.
 
 ## Arquivos
 
@@ -31,12 +31,17 @@ Após editar qualquer módulo, execute `node tools/build.mjs` para regenerar o b
 - Preço de venda abaixo do custo exige confirmação adicional.
 - As datas e o responsável são registrados na tabela `price_history`.
 
-## Etapas necessárias antes do lançamento
+## Registro da implantação e validação
 
-1. Executar a migração `migrations/20261020_price_import.sql` no banco em uma janela segura. A migração adiciona metadados ao histórico e a função RPC `apply_price_import`.
-2. Conferir as permissões usando perfis admin e caixa (caixa não deve conseguir executar a atualização nem ver o histórico).
-3. Os PDFs reais foram examinados: 82 e 443 linhas com colunas numéricas válidas. Testar novamente no navegador conectado ao ambiente de homologação, sem gravar alterações reais.
-4. Testar uma atualização em ambiente separado ou produto de teste, inclusive tentativa simultânea de alteração.
-5. Só depois publicar a interface, com revisão final.
+1. Snapshot de preços: `private.sao_marcos_price_backup_20261020` (529 produtos ativos).
+2. Snapshot do histórico: `private.sao_marcos_history_backup_20261020` (540 eventos).
+3. Migração `admin_pdf_price_import_and_history_20261020` aplicada no Supabase.
+4. Alterações confirmadas no banco: colunas `source` e `import_batch_id` e RPC `apply_price_import`.
+5. Verificação após a migração: 529 produtos ativos, 540 eventos de histórico, 363 movimentações, sem mudança de contagens.
+6. Repositório oficial atualizado via merge da PR #1 (`bd5ae18af641c8be7003eec621c3647c83631cfd`).
+7. Checagem de sintaxe, consistência do bundle e testes automáticos do GitHub: aprovados.
+8. **Pendente:** conferência manual no navegador publicado com login de admin e caixa e importação real controlada. Não houve escrita de preços reais por teste.
 
-Não foi aplicada qualquer modificação ao banco de produção nesta branch.
+### Recuperação
+
+O estado do código anterior à implantação está no histórico Git, e os snapshots de preços e histórico estão no esquema `private` do banco. Se for necessário reverter, **nunca sobrescreva estoque/pista ou movimentos com um snapshot antigo**, pois a equipe pode ter efetuado vendas depois do backup; restaurar apenas o conteúdo necessário e validar o histórico.
