@@ -15,7 +15,9 @@ Esta alteração foi feita **fora da branch main**. Não publicar os arquivos se
 - `scripts/price-tools.js`: leitura de PDF, prévia selecionável e histórico de preços.
 - `scripts/events.js`: eventos e inicialização.
 
-**Atenção:** esta etapa extraiu funções sem mudar a forma de compartilhamento de estado: são scripts clássicos que dividem o escopo global léxico da página. A ordem do carregador é obrigatória. Uma migração posterior para ES Modules com imports explícitos exigirá refatoração e testes adicionais.
+**Atenção:** os arquivos de `scripts/` são seções de código para manutenção, e não devem ser carregados individualmente no HTML. O navegador carrega **somente** `dist/app.bundle.js`, que contém os módulos no mesmo escopo do aplicativo original. A ordem dos módulos é obrigatória. Uma migração futura para ES Modules com imports explícitos exigirá uma refatoração adicional.
+
+Após editar qualquer módulo, execute `node tools/build.mjs` para regenerar o bundle. `node tools/build.mjs --check` verifica se o bundle está sincronizado; o workflow do GitHub faz essa verificação a cada PR.
 
 ## Importação de PDF
 
@@ -33,7 +35,7 @@ Esta alteração foi feita **fora da branch main**. Não publicar os arquivos se
 
 1. Executar a migração `migrations/20261020_price_import.sql` no banco em uma janela segura. A migração adiciona metadados ao histórico e a função RPC `apply_price_import`.
 2. Conferir as permissões usando perfis admin e caixa (caixa não deve conseguir executar a atualização nem ver o histórico).
-3. Testar os dois PDFs originais e confirmar os totais sem gravar alterações reais.
+3. Os PDFs reais foram examinados: 82 e 443 linhas com colunas numéricas válidas. Testar novamente no navegador conectado ao ambiente de homologação, sem gravar alterações reais.
 4. Testar uma atualização em ambiente separado ou produto de teste, inclusive tentativa simultânea de alteração.
 5. Só depois publicar a interface, com revisão final.
 
