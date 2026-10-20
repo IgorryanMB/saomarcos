@@ -8,7 +8,7 @@ const sandbox = {console, window:{}};
 const testBundle = source.replace(
   /\bvoid boot\(\);\s*\}\)\(\);\s*$/,
   "globalThis.__testTools={ parseBrazilianPrice, priceDelta, buildPriceCandidates, " +
-  "extractErpRowsFromPage, isAdmin, setProducts(p){ products=p; }, setSession(p){ session=p; } };\n})();\n"
+  "extractErpRowsFromPage, detectPriceColumns, parseErpReportDate, isAdmin, setProducts(p){ products=p; }, setSession(p){ session=p; } };\n})();\n"
 );
 assert.notEqual(testBundle, source, 'O bundle deve expor os helpers de testes');
 vm.runInNewContext(testBundle, sandbox, {timeout:1000});
@@ -28,32 +28,56 @@ test('calcula aumento e redução de custos e preços', () => {
 });
 
 
-test('REL024: separa código e código de barras, lê custo/venda de três casas e ignora o estoque', () => {
-  const item = (str, x, y = 100) => ({str, transform:[1,0,0,1,x,y]});
-  const rows = api.extractErpRowsFromPage([
-    item('42588',15.6), item('1234567890123',46.7),
-    item('ATRON 20W50 1L',104.6), item('14,000',483.5),
-    item('96,309',535.2), item('18,333',592.7),
-    item('256,67',661.6), item('35,990',727.2),
-    item('503,86',801.2)
-  ], 841.92, 'REL024', 1);
-  assert.equal(rows.length,1);
-  assert.equal(rows[0].code,'42588');
-  assert.equal(rows[0].cost,18.333);
-  assert.equal(rows[0].sale,35.99);
+test('leitor identifica custo e venda pelos nomes do cabeçalho, inclusive REL026', () => {
+  const item=(str,x,y)=>({str,transform:[1,0,0,1,x,y]});
+  const rows=api.extractErpRowsFromPage([
+    item('Código',17,470),item('Descrição',106,470),
+    item('Markup',531,470),item('Custo',596,470),
+    item('Total Custo',643,470),item('Venda',728,470),item('Total Venda',782,470),
+    item('42588',15.6,450),item('1234567890123',46.7,450),
+    item('ATRON 20W50 1L',104,450),item('14,000',483.5,450),
+    item('96,309',535.2,450),item('18,333',592.7,450),
+    item('256,67',661.6,450),item('35,990',727.2,450),
+    item('503,86',801.2,450)
+  ],841.92,595.32,1);
+  assert.equal(rows.columnsFound,true);
+  assert.equal(rows.rows.length,1);
+  assert.equal(rows.rows[0].code,'42588');
+  assert.equal(rows.rows[0].cost,18.333);
+  assert.equal(rows.rows[0].sale,35.99);
 });
 
-test('REL011: mantém o reconhecimento das colunas antigas', () => {
-  const item = (str, x, y = 100) => ({str, transform:[1,0,0,1,x,y]});
-  const rows = api.extractErpRowsFromPage([
-    item('42580',15.6), item('75W140 RAID GL5',106),
-    item('11,00',466.5), item('155,99',497.6),
-    item('81,91',526), item('85,75',555.5)
-  ], 609.48, 'REL011', 1);
-  assert.equal(rows.length,1);
-  assert.equal(rows[0].code,'42580');
-  assert.equal(rows[0].cost,85.75);
-  assert.equal(rows[0].sale,155.99);
+test('leitor reconhece REL011 sem consultar o número do relatório', () => {
+  const item=(str,x,y)=>({str,transform:[1,0,0,1,x,y]});
+  const rows=api.extractErpRowsFromPage([
+    item('Código',16,718),item('Descrição',106,718),
+    item('A vista',501,718),item('Markup',527,718),
+    item('Custo Und',558,718),
+    item('42580',15.6,699),item('75W140 RAID GL5',106,699),
+    item('11,00',466.5,699),item('155,99',497.6,699),
+    item('81,91',526,699),item('85,75',555.5,699)
+  ],609.48,841.92,1);
+  assert.equal(rows.columnsFound,true);
+  assert.equal(rows.rows.length,1);
+  assert.equal(rows.rows[0].code,'42580');
+  assert.equal(rows.rows[0].cost,85.75);
+  assert.equal(rows.rows[0].sale,155.99);
+});
+
+test('rejeita formato desconhecido sem colunas de custo e venda', () => {
+  const item=(str,x,y)=>({str,transform:[1,0,0,1,x,y]});
+  const rows=api.extractErpRowsFromPage([
+    item('Código',16,710),item('Estoque Total',180,710),
+    item('42580',16,694),item('14,000',180,694)
+  ],609.48,841.92,1);
+  assert.equal(rows.columnsFound,false);
+  assert.equal(rows.rows.length,0);
+});
+
+test('extrai data do relatório e rejeita datas inválidas',()=>{
+  assert.equal(api.parseErpReportDate('Data/Hora: 20/10/2026 11:43:13'),'2026-10-20T14:43:13.000Z');
+  assert.equal(api.parseErpReportDate('Data/Hora: 31/02/2026 11:43:13'),null);
+  assert.equal(api.parseErpReportDate('Relatorio sem data'),null);
 });
 
 test('preços de três casas decimais são preservados', () => {
