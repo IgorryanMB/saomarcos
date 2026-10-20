@@ -8,7 +8,7 @@ const sandbox = {console, window:{}};
 const testBundle = source.replace(
   /\bvoid boot\(\);\s*\}\)\(\);\s*$/,
   "globalThis.__testTools={ parseBrazilianPrice, priceDelta, buildPriceCandidates, " +
-  "isAdmin, setProducts(p){ products=p; }, setSession(p){ session=p; } };\n})();\n"
+  "extractErpRowsFromPage, isAdmin, setProducts(p){ products=p; }, setSession(p){ session=p; } };\n})();\n"
 );
 assert.notEqual(testBundle, source, 'O bundle deve expor os helpers de testes');
 vm.runInNewContext(testBundle, sandbox, {timeout:1000});
@@ -25,6 +25,40 @@ test('calcula aumento e redução de custos e preços', () => {
   assert.match(api.priceDelta(20,25), /\+25,0%/);
   assert.match(api.priceDelta(50,40), /-20,0%/);
   assert.equal(api.priceDelta(20,20), 'Sem alteração');
+});
+
+
+test('REL024: separa código e código de barras, lê custo/venda de três casas e ignora o estoque', () => {
+  const item = (str, x, y = 100) => ({str, transform:[1,0,0,1,x,y]});
+  const rows = api.extractErpRowsFromPage([
+    item('42588',15.6), item('1234567890123',46.7),
+    item('ATRON 20W50 1L',104.6), item('14,000',483.5),
+    item('96,309',535.2), item('18,333',592.7),
+    item('256,67',661.6), item('35,990',727.2),
+    item('503,86',801.2)
+  ], 841.92, 'REL024', 1);
+  assert.equal(rows.length,1);
+  assert.equal(rows[0].code,'42588');
+  assert.equal(rows[0].cost,18.333);
+  assert.equal(rows[0].sale,35.99);
+});
+
+test('REL011: mantém o reconhecimento das colunas antigas', () => {
+  const item = (str, x, y = 100) => ({str, transform:[1,0,0,1,x,y]});
+  const rows = api.extractErpRowsFromPage([
+    item('42580',15.6), item('75W140 RAID GL5',106),
+    item('11,00',466.5), item('155,99',497.6),
+    item('81,91',526), item('85,75',555.5)
+  ], 609.48, 'REL011', 1);
+  assert.equal(rows.length,1);
+  assert.equal(rows[0].code,'42580');
+  assert.equal(rows[0].cost,85.75);
+  assert.equal(rows[0].sale,155.99);
+});
+
+test('preços de três casas decimais são preservados', () => {
+  assert.equal(api.parseBrazilianPrice('37,537'),37.537);
+  assert.match(api.priceDelta(37.54,37.537,3),/0,003/);
 });
 
 test('diferenças do PDF nunca mexem nas quantidades', () => {
