@@ -8,9 +8,19 @@ alter table public.price_history
 alter table public.price_history
   add column if not exists import_batch_id uuid;
 
-alter table public.price_history
-  add constraint price_history_source_check
-  check (source in ('manual', 'pdf'));
+do $
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'price_history_source_check'
+      and conrelid = 'public.price_history'::regclass
+  ) then
+    alter table public.price_history
+      add constraint price_history_source_check
+      check (source in ('manual', 'pdf'));
+  end if;
+end;
+$;
 
 create or replace function private.capture_price_history()
 returns trigger
