@@ -349,8 +349,15 @@
       footer.prepend(button);
       button.onclick = () => {
         const id = $('productId').value;
-        bootstrap.Modal.getInstance($('productModal'))?.hide();
-        if (id) openPriceHistory(id);
+        if (!id) return;
+        const productModal = $('productModal');
+        const instance = bootstrap.Modal.getInstance(productModal);
+        if (instance) {
+          productModal.addEventListener('hidden.bs.modal', () => openPriceHistory(id), {once: true});
+          instance.hide();
+        } else {
+          openPriceHistory(id);
+        }
       };
       $('productModal').addEventListener('show.bs.modal', () => {
         button.classList.toggle('d-none', !isAdmin() || !$('productId').value);
