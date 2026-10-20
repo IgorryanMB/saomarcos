@@ -8,7 +8,7 @@ alter table public.price_history
 alter table public.price_history
   add column if not exists import_batch_id uuid;
 
-do $
+do $$
 begin
   if not exists (
     select 1 from pg_constraint
@@ -20,7 +20,7 @@ begin
       check (source in ('manual', 'pdf'));
   end if;
 end;
-$;
+$$;
 
 create or replace function private.capture_price_history()
 returns trigger
