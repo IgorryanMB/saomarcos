@@ -3,6 +3,7 @@
   let priceCandidates = [];
   let priceHistoryRows = [];
   let priceHistoryProductId = null;
+  let priceHistoryPeople = new Map();
 
   function priceDelta(oldValue, nextValue) {
     if (oldValue === null || oldValue === undefined || !Number.isFinite(Number(oldValue))) {
@@ -250,7 +251,7 @@
         '<td>' + money(item.old.sale_price) + ' → ' + money(item.row.sale_price) +
         '<small class="d-block text-secondary">' + sale + '</small></td>' +
         '<td>' + (item.row.source === 'pdf' ? 'Importação PDF' : 'Manual') +
-        '</td><td>' + esc(item.row.changed_by || '—') + '</td></tr>';
+        '</td><td>' + esc(priceHistoryPeople.get(item.row.changed_by) || 'Sistema') + '</td></tr>';
     }).join('') || '<tr><td colspan="6" class="text-center py-4">Ainda não há alterações registradas.</td></tr>';
   }
 
@@ -261,7 +262,13 @@
     $('priceHistoryBody').innerHTML = '';
     bootstrap.Modal.getOrCreateInstance($('priceHistoryModal')).show();
     try {
-      priceHistoryRows = await loadPriceHistory();
+      const [history, peopleResult] = await Promise.all([
+        loadPriceHistory(),
+        db.from('profiles').select('id,display_name')
+      ]);
+      if (peopleResult.error) throw peopleResult.error;
+      priceHistoryRows = history;
+      priceHistoryPeople = new Map((peopleResult.data || []).map(person => [person.id, person.display_name]));
       displayPriceHistory();
     } catch (error) {
       console.error('Histórico de preços:', error);
