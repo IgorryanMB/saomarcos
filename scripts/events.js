@@ -537,6 +537,7 @@
 
   async function boot(){
     configureUi();
+    setupPriceTools();
     bindEvents();
 
     try{
