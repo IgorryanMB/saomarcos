@@ -1,0 +1,71 @@
+name: São Marcos - manter Supabase ativo
+
+on:
+  schedule:
+    # 4 consultas de leitura por dia. UTC; São Paulo normalmente UTC-3.
+    - cron: '17 0,6,12,18 * * *'
+    # Commit mensal para evitar que o GitHub desative o agendamento após 60 dias sem atividade.
+    - cron: '43 3 1 * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/supabase-keepalive.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: saomarcos-supabase-keepalive
+  cancel-in-progress: false
+
+jobs:
+  consulta:
+    name: Consultar Supabase (somente leitura)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Consultar horário do banco com chave pública
+        env:
+          SUPABASE_URL: https://voxyialbhxsaqewcwtyo.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_XsLS0csjBTFR3YNgg0mNgA_QKUop5oq
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 --retry-all-errors --retry-delay 5 \
+            --connect-timeout 10 --max-time 35 \
+            --header "apikey: $SUPABASE_PUBLISHABLE_KEY" \
+            --header 'Accept: application/json' \
+            --output "$RUNNER_TEMP/sao-marcos-ping.json" \
+            "$SUPABASE_URL/rest/v1/rpc/sao_marcos_activity_ping"
+          python3 - "$RUNNER_TEMP/sao-marcos-ping.json" <<'PY'
+          import json
+          from datetime import datetime
+          import sys
+          with open(sys.argv[1], encoding="utf-8") as response:
+              result = json.load(response)
+          if not isinstance(result, str):
+              raise SystemExit("O Supabase não retornou o timestamp esperado")
+          datetime.fromisoformat(result.replace("Z", "+00:00"))
+          print("Consulta de leitura executada com sucesso:", result)
+          PY
+
+  preservar-agendamento:
+    name: Preservar atividade do GitHub mensalmente
+    if: github.event_name == 'schedule' && github.event.schedule == '43 3 1 * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Renovar marcador de atividade sem mexer no sistema
+        shell: bash
+        run: |
+          set -euo pipefail
+          date -u +'%Y-%m-%dT%H:%M:%SZ' > .github/supabase-keepalive-last.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/supabase-keepalive-last.txt
+          git commit -m 'chore: renovar monitoramento do Supabase [skip ci]'
+          git push origin HEAD:main
